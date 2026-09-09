@@ -1,0 +1,17 @@
+# Environment files with secrets — never commit
+server/.env
+client/.env
+client/.env.local
+.env
+.env.local
+
+# Dependencies
+node_modules/
+client/node_modules/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+server/uploads/
+
+.git-backup/
