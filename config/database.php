@@ -3,10 +3,10 @@
  * Database connection — Holy Family Parish
  */
 
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'holy_family_parish');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+define('DB_HOST', 'sql303.infinityfree.com');
+define('DB_NAME', 'if0_42873789_holy_family_parish');
+define('DB_USER', 'if0_42873789');
+define('DB_PASS', 'YuVmKvwvmR');
 
 function getDB(): PDO
 {

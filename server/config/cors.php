@@ -2,14 +2,14 @@
 
 require_once __DIR__ . '/env.php';
 
-$allowedOrigins = array_filter(array_map('trim', explode(',', getenv('CORS_ORIGIN') ?: 'http://localhost:5173,http://127.0.0.1:5173')));
+$allowedOrigins = array_filter(array_map('trim', explode(',', getenv('CORS_ORIGIN') ?: 'https://holyfamilyparish.vercel.app,http://localhost:5173,http://127.0.0.1:5173')));
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 if ($origin && in_array($origin, $allowedOrigins, true)) {
     header('Access-Control-Allow-Origin: ' . $origin);
     header('Vary: Origin');
 } else {
-    header('Access-Control-Allow-Origin: ' . ($allowedOrigins[0] ?: 'http://localhost:5173'));
+    header('Access-Control-Allow-Origin: ' . ($allowedOrigins[0] ?: 'https://holyfamilyparish.vercel.app'));
 }
 
 header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');

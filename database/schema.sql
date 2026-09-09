@@ -23,11 +23,6 @@
 --   add_password_reset_otps.sql
 --   add_system_logs.sql
 
-CREATE DATABASE IF NOT EXISTS holy_family_parish
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
-
-USE holy_family_parish;
 
 -- ---------------------------------------------------------------------------
 -- Authentication

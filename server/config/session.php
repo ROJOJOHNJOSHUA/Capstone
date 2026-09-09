@@ -3,12 +3,15 @@
 if (session_status() === PHP_SESSION_NONE) {
     $lifetime = (int) (getenv('SESSION_LIFETIME') ?: 86400);
 
+    $sameSite = getenv('SESSION_SAMESITE') ?: 'Lax';
+    $secure = filter_var(getenv('SESSION_SECURE') ?: 'false', FILTER_VALIDATE_BOOLEAN);
+
     session_set_cookie_params([
         'lifetime' => $lifetime,
         'path' => '/',
         'httponly' => true,
-        'samesite' => 'Lax',
-        'secure' => false,
+        'samesite' => $sameSite,
+        'secure' => $secure,
     ]);
 
     session_name('HF_PARISH_SESSION');
