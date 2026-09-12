@@ -1,7 +1,6 @@
 const productionApiUrl = 'https://holyfamilyparish.freedev.app/server/api';
 
 export const API_BASE = '/api';
-  import.meta.env.VITE_API_URL || (import.meta.env.PROD ? productionApiUrl : '/api');
 
 export const SERVICE_TYPES = [
   'Marriage',
