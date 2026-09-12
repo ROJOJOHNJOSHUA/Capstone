@@ -3,8 +3,9 @@
 if (session_status() === PHP_SESSION_NONE) {
     $lifetime = (int) (getenv('SESSION_LIFETIME') ?: 86400);
 
-    $sameSite = getenv('SESSION_SAMESITE') ?: 'Lax';
-    $secure = filter_var(getenv('SESSION_SECURE') ?: 'false', FILTER_VALIDATE_BOOLEAN);
+    $isHttps = !empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off';
+    $sameSite = getenv('SESSION_SAMESITE') ?: ($isHttps ? 'None' : 'Lax');
+    $secure = filter_var(getenv('SESSION_SECURE') ?: ($isHttps ? 'true' : 'false'), FILTER_VALIDATE_BOOLEAN);
 
     session_set_cookie_params([
         'lifetime' => $lifetime,

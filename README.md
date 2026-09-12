@@ -28,7 +28,7 @@ ParishSystem1/
 ### 2. PHP API
 
 - API base: `http://localhost/ParishSystem1/server/api`
-- Configure `server/.env` if needed (DB credentials, CORS)
+- Configure `server/.env` with the database credentials, `CORS_ORIGIN`, `SESSION_SAMESITE=None`, and `SESSION_SECURE=true` for production.
 
 ### 3. React frontend
 
@@ -49,7 +49,21 @@ cd client
 npm run build
 ```
 
-Serve `client/dist` via Apache or copy into your web root. Set `VITE_API_URL=http://localhost/ParishSystem1/server/api` in `.env` if not using the Vite proxy.
+Deploy `client/dist` to Vercel with `VITE_API_URL=https://holyfamilyparish.freedev.app/server/api`.
+
+Deploy the `server` directory so the API is available at `https://holyfamilyparish.freedev.app/server/api`, and create a server-side `server/.env` (never commit it):
+
+```dotenv
+DB_HOST=your-infinityfree-mysql-host
+DB_NAME=your-infinityfree-database
+DB_USER=your-infinityfree-database-user
+DB_PASS=your-infinityfree-database-password
+CORS_ORIGIN=https://holyfamilyparish.vercel.app
+SESSION_SAMESITE=None
+SESSION_SECURE=true
+```
+
+The frontend uses credentialed requests, so the API must return CORS headers for `https://holyfamilyparish.vercel.app` and the production session cookie must be secure with `SameSite=None`.
 
 ## Features
 
