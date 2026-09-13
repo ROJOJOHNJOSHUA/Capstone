@@ -150,10 +150,10 @@ export default function Navbar({ dashboard = false, isSidebarOpen = false, onSid
                 {isSidebarOpen ? '×' : '☰'}
               </button>
             )}
-            {user ? (
+            {user ? (!isAdmin ? (
                 <Link
                   to={getDashboardByRole(normalizeRole(user.role))}
-                  className={`${!isAdmin ? 'flex sm:hidden' : 'flex'} items-center gap-2 text-[#273746]`}
+                  className="flex sm:hidden items-center gap-2 text-[#273746]"
                 >
                   <span className="flex h-9 w-9 items-center justify-center rounded-full border border-[#c9a25c] text-[#b18a45]">
                     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
@@ -161,14 +161,12 @@ export default function Navbar({ dashboard = false, isSidebarOpen = false, onSid
                       <path d="M12 2v4M10.5 4h3" strokeLinecap="round" />
                     </svg>
                   </span>
-                  {!isAdmin && (
-                    <span className="leading-tight">
-                      <span className="block font-display text-sm font-bold">Holy Family Parish</span>
-                      <span className="block text-[8px] uppercase tracking-[0.2em] text-[#9a8666]">Faith · Service · Community</span>
-                    </span>
-                  )}
-                    </Link>
-              ) : (
+                  <span className="leading-tight">
+                    <span className="block font-display text-sm font-bold">Holy Family Parish</span>
+                    <span className="block text-[8px] uppercase tracking-[0.2em] text-[#9a8666]">Faith · Service · Community</span>
+                  </span>
+                </Link>
+              ) : null) : (
                 <Link to="/" className="hidden items-center gap-2 text-[#273746] sm:flex">
                   <span className="flex h-9 w-9 items-center justify-center rounded-full border border-[#c9a25c] text-[#b18a45]">
                     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">

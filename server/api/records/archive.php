@@ -67,7 +67,7 @@ function getReservationRecordList(PDO $db, string $q, string $service, string $s
                    u.fullname, u.email, u.phone, u.address, r.requirements, r.service_details
             FROM reservations r
             INNER JOIN users u ON r.user_id = u.id
-            WHERE 1 = 1';
+            WHERE r.status = \'Completed\'';
     $params = [];
 
     if ($q !== '') {
@@ -81,8 +81,9 @@ function getReservationRecordList(PDO $db, string $q, string $service, string $s
         $params[] = $service;
     }
     if ($status !== '') {
-        $sql .= ' AND r.status = ?';
-        $params[] = $status;
+        if ($status !== 'Completed') {
+            $sql .= ' AND 1 = 0';
+        }
     }
     if ($from !== '') {
         $sql .= ' AND DATE(r.created_at) >= ?';

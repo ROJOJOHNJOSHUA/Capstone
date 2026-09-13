@@ -16,7 +16,7 @@ $isAdminNav = $user && $user['role'] === 'admin';
 <nav class="navbar navbar-expand-lg navbar-dark parish-navbar">
     <div class="container">
         <a class="navbar-brand d-flex align-items-center gap-2" href="<?= e(appUrl('index.php')) ?>">
-            <i class="bi bi-building"></i>
+            <?php if (!$isAdminNav): ?><i class="bi bi-building"></i><?php endif; ?>
             <span class="brand-text">Holy Family Parish</span>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">

@@ -5,6 +5,7 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../server/utils/schedule.php';
 require_once __DIR__ . '/../server/utils/notifications.php';
 require_once __DIR__ . '/../server/utils/sms.php';
+require_once __DIR__ . '/../server/utils/records.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !verifyCsrf()) {
     setFlash('danger', 'Invalid request.');
@@ -91,6 +92,10 @@ if ($action === 'update_status') {
 
     $stmt = $db->prepare('UPDATE reservations SET status = ?, remarks = ? WHERE id = ?');
     $stmt->execute([$status, $remarks ?: null, $id]);
+
+    if ($status === 'Completed' && $statusChanged) {
+        createReservationRecordIfMissing($db, $id);
+    }
 
     // Notification/SMS only on a real status transition, to match the API endpoint's dedup behavior.
     if ($statusChanged) {

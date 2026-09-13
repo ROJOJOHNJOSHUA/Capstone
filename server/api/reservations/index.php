@@ -11,6 +11,7 @@ require_once __DIR__ . '/../../utils/sms.php';
 require_once __DIR__ . '/../../utils/documents.php';
 require_once __DIR__ . '/../../utils/upload.php';
 require_once __DIR__ . '/../../utils/system_logs.php';
+require_once __DIR__ . '/../../utils/records.php';
 
 $auth = requireAuth();
 $db = getDB();
@@ -342,8 +343,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     $upd = $db->prepare('UPDATE reservations SET status = ?, remarks = ? WHERE id = ?');
     $upd->execute([$status, $remarks ?: null, $id]);
 
-    if ($status === 'Approved' && $reservation['service_type'] === 'Funeral') {
-        createFuneralRecordIfMissing($db, $id);
+    if ($status === 'Completed' && $statusChanged) {
+        createReservationRecordIfMissing($db, $id);
     }
 
     // A decision notification is created only after a real status transition.
@@ -391,19 +392,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
 
 errorResponse('Method not allowed.', 405);
 
-function createFuneralRecordIfMissing(PDO $db, int $reservationId): void
-{
-    $existing = $db->prepare('SELECT id FROM parish_records WHERE reservation_id = ? LIMIT 1');
-    $existing->execute([$reservationId]);
-    if ($existing->fetchColumn()) return;
-
-    $stmt = $db->prepare('SELECT user_id, service_details FROM reservations WHERE id = ? AND service_type = \'Funeral\' LIMIT 1');
-    $stmt->execute([$reservationId]);
-    $reservation = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$reservation) return;
-
-    $details = json_decode((string) ($reservation['service_details'] ?? ''), true);
-    $recordDetails = is_array($details) ? json_encode($details, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) : (string) ($reservation['service_details'] ?? '');
-    $insert = $db->prepare('INSERT INTO parish_records (user_id, reservation_id, service_type, details) VALUES (?, ?, ?, ?)');
-    $insert->execute([(int) $reservation['user_id'], $reservationId, 'Funeral', $recordDetails ?: 'Funeral reservation details']);
-}
