@@ -3,8 +3,6 @@
 require_once __DIR__ . '/../includes/init.php';
 require_once __DIR__ . '/../includes/auth.php';
 
-guestOnly();
-
 $pageTitle = 'Register — ' . APP_NAME;
 require __DIR__ . '/../includes/header.php';
 ?>

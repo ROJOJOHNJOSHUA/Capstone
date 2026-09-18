@@ -84,9 +84,7 @@ export default function App() {
       <Route
         path="/register"
         element={
-          <GuestRoute>
-            <Register />
-          </GuestRoute>
+          <Register />
         }
       />
       <Route
