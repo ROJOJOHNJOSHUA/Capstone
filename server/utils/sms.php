@@ -125,11 +125,12 @@ function sendSMS(PDO $db, int $userId, string $phoneNumber, string $message): ar
             ];
         }
 
-        // Official TextBee endpoint: device ID in path; auth via x-api-key header
-        $url = $config['base_url'] . '/gateway/devices/' . rawurlencode($config['device_id']) . '/send-sms';
+        // TextBee sends through the account gateway endpoint; select the device in the payload.
+        $url = $config['base_url'] . '/gateway/send-sms';
         $postData = [
             'recipients' => [$normalizedPhone],
             'message' => $message,
+            'deviceId' => $config['device_id'],
         ];
 
         error_log('[SMS] TextBee endpoint: ' . $url);

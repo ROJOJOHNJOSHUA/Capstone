@@ -48,7 +48,7 @@ if ($config === null) {
     echo "  API key: {$keyPreview}\n";
     echo "  Device ID: {$config['device_id']}\n";
     echo "  Base URL: {$config['base_url']}\n";
-    echo "  Endpoint: {$config['base_url']}/gateway/devices/{DEVICE_ID}/send-sms\n";
+    echo "  Endpoint: {$config['base_url']}/gateway/send-sms\n";
 }
 echo "\n";
 
@@ -71,11 +71,12 @@ if ($testPhone === '' || $testUserId <= 0) {
     echo "    Normalized phone: {$sampleNormalized}\n";
     echo "    Message: {$sampleMessage}\n";
     if ($config) {
-        echo "    POST {$config['base_url']}/gateway/devices/{$config['device_id']}/send-sms\n";
+        echo "    POST {$config['base_url']}/gateway/send-sms\n";
         echo "    Headers: x-api-key: ***, Content-Type: application/json\n";
         echo "    Body: " . json_encode([
             'recipients' => [$sampleNormalized],
             'message' => $sampleMessage,
+            'deviceId' => $config['device_id'],
         ], JSON_UNESCAPED_UNICODE) . "\n";
     }
     echo "\n  Sample TextBee success response:\n";

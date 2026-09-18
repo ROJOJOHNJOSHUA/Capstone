@@ -11,8 +11,8 @@ $db = getDB();
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $status = $_GET['status'] ?? '';
     $search = $_GET['search'] ?? '';
-    $page = (int) ($_GET['page'] ?? 1);
-    $limit = (int) ($_GET['limit'] ?? 20);
+    $page = max(1, (int) ($_GET['page'] ?? 1));
+    $limit = min(100, max(1, (int) ($_GET['limit'] ?? 20)));
     $offset = ($page - 1) * $limit;
 
     $sql = 'SELECT sl.*, u.fullname, u.email 
@@ -34,9 +34,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $params[] = $searchParam;
     }
 
-    $sql .= ' ORDER BY sl.created_at DESC LIMIT ? OFFSET ?';
-    $params[] = $limit;
-    $params[] = $offset;
+    // Native PDO prepares do not bind MySQL LIMIT/OFFSET reliably; both values
+    // are validated integers before being embedded in this query.
+    $sql .= " ORDER BY sl.created_at DESC LIMIT {$limit} OFFSET {$offset}";
 
     $stmt = $db->prepare($sql);
     $stmt->execute($params);
