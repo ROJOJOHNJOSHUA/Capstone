@@ -21,6 +21,204 @@ function parseServiceDetails(value) {
   }
 }
 
+const MARRIAGE_LABELS = [
+  'fullname',
+  'email',
+  'phone',
+  'address',
+  "Bride's Full Name",
+  "Bride's Age",
+  "Bride's Address",
+  "Bride's Contact Number",
+  "Bride's Father Full Name",
+  "Bride's Mother Full Name",
+  "Groom's Full Name",
+  "Groom's Age",
+  "Groom's Address",
+  "Groom's Contact Number",
+  "Groom's Father Full Name",
+  "Groom's Mother Full Name",
+];
+
+function decodeDisplayText(value) {
+  const text = String(value ?? '');
+  if (typeof document === 'undefined' || !text.includes('&')) return text;
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = text;
+  return textarea.value;
+}
+
+function extractLegacyMarriageDetails(value) {
+  const source = decodeDisplayText(value).replace(/\r/g, ' ').replace(/\n/g, ' ');
+  const details = {};
+  MARRIAGE_LABELS.forEach((label) => {
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const nextLabels = MARRIAGE_LABELS
+      .filter((candidate) => candidate !== label)
+      .map((candidate) => candidate.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('|');
+    const match = source.match(new RegExp(`${escaped}\\s*:\\s*(.*?)(?=\\s+(?:${nextLabels})\\s*:|$)`, 'i'));
+    if (match?.[1]?.trim()) details[label] = match[1].trim();
+  });
+  return details;
+}
+
+function extractLegacyDetails(value, labels) {
+  const source = decodeDisplayText(value).replace(/\r/g, ' ').replace(/\n/g, ' ');
+  const details = {};
+  labels.forEach((label) => {
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const nextLabels = labels
+      .filter((candidate) => candidate !== label)
+      .map((candidate) => candidate.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('|');
+    const match = source.match(new RegExp(`${escaped}\\s*:\\s*(.*?)(?=\\s+(?:${nextLabels})\\s*:|$)`, 'i'));
+    if (match?.[1]?.trim()) details[label] = match[1].trim();
+  });
+  return details;
+}
+
+const BAPTISM_LABELS = [
+  'First Name', 'Middle Name', 'Last Name', 'Date of Birth', 'Place of Birth', 'Sex',
+  'House / Street', 'Barangay', 'Municipality', 'Province', "Father's Full Name",
+  "Mother's Full Name", 'Name of Ninong / Ninang', 'Ninong / Ninang Contact Number',
+];
+
+const FUNERAL_LABELS = [
+  'Full Name of Deceased', 'Date of Death', 'Age', 'Sex', 'Civil Status',
+  'Residence / Address', 'Date of Inquiry', 'Spouse / Maiden Name', 'No. of Children',
+  'Cemetery Type', 'Funeral Service', 'Lot / Location', 'Kalot / Pancheon',
+  'New Burial Lot', 'Existing Niche Information', 'Previous Occupant',
+  'Previous Niche Occupant', 'Book', 'Page', 'Ossuary Chamber', 'Rental',
+  'Maintenance Fee', 'Labor', 'Niche Information',
+];
+
+function servicePresentation(reservation, labels) {
+  const jsonDetails = parseServiceDetails(reservation.service_details);
+  const legacyDetails = extractLegacyDetails(reservation.requirements, labels);
+  const details = { ...legacyDetails, ...jsonDetails };
+  return {
+    details,
+    legacyNotes: Object.keys(jsonDetails).length === 0 ? decodeDisplayText(reservation.requirements || '') : '',
+  };
+}
+
+function baptismPresentation(reservation) {
+  const { details, legacyNotes } = servicePresentation(reservation, BAPTISM_LABELS);
+  return {
+    child: {
+      firstName: valueFrom(details, ['child_first_name', 'First Name']),
+      middleName: valueFrom(details, ['child_middle_name', 'Middle Name']),
+      lastName: valueFrom(details, ['child_last_name', 'Last Name']),
+      sex: valueFrom(details, ['child_sex', 'Sex']),
+      birthDate: valueFrom(details, ['child_birthdate', 'Date of Birth']),
+      birthPlace: valueFrom(details, ['child_birth_place', 'Place of Birth']),
+    },
+    address: {
+      street: valueFrom(details, ['child_address_street', 'House / Street']),
+      barangay: valueFrom(details, ['child_address_barangay', 'Barangay']),
+      municipality: valueFrom(details, ['child_address_municipality', 'Municipality']),
+      province: valueFrom(details, ['child_address_province', 'Province']),
+    },
+    parents: {
+      father: valueFrom(details, ['father_full_name', "Father's Full Name"]),
+      mother: valueFrom(details, ['mother_full_name', "Mother's Full Name"]),
+    },
+    sponsor: {
+      name: valueFrom(details, ['sponsor_name', 'Name of Ninong / Ninang']),
+      contact: valueFrom(details, ['sponsor_contact_number', 'Ninong / Ninang Contact Number']),
+    },
+    legacyNotes,
+  };
+}
+
+function funeralPresentation(reservation) {
+  const { details, legacyNotes } = servicePresentation(reservation, FUNERAL_LABELS);
+  return {
+    requester: {
+      fullname: valueFrom(reservation, ['fullname']),
+      email: valueFrom(reservation, ['email']),
+      phone: valueFrom(reservation, ['phone']),
+      address: valueFrom(reservation, ['address']),
+    },
+    deceased: {
+      name: valueFrom(details, ['deceased_name', 'Full Name of Deceased']),
+      age: valueFrom(details, ['age', 'Age']),
+      sex: valueFrom(details, ['sex', 'Sex']),
+      dateOfDeath: valueFrom(details, ['date_of_death', 'Date of Death']),
+      residence: valueFrom(details, ['residence', 'Residence / Address']),
+      inquiryDate: valueFrom(details, ['date_of_inquiry', 'Date of Inquiry']),
+      spouse: valueFrom(details, ['spouse_maiden_name', 'Spouse / Maiden Name']),
+      children: valueFrom(details, ['children_count', 'No. of Children']),
+    },
+    service: {
+      civilStatus: valueFrom(details, ['civil_status', 'Civil Status']),
+      cemetery: valueFrom(details, ['cemetery_type', 'Cemetery Type']),
+      funeralService: valueFrom(details, ['funeral_service', 'Funeral Service']),
+      lot: valueFrom(details, ['lot_location', 'Lot / Location']),
+      niche: valueFrom(details, ['niche_information', 'Niche Information']),
+      chamber: valueFrom(details, ['ossuary_chamber', 'Ossuary Chamber']),
+    },
+    legacyNotes,
+  };
+}
+
+function valueFrom(details, keys) {
+  const value = keys.map((key) => details[key]).find((item) => item !== undefined && item !== null && String(item).trim() !== '');
+  return value ? decodeDisplayText(value) : '—';
+}
+
+function marriagePresentation(reservation) {
+  const jsonDetails = parseServiceDetails(reservation.service_details);
+  const legacyDetails = extractLegacyMarriageDetails(reservation.requirements);
+  const details = { ...legacyDetails, ...jsonDetails };
+  return {
+    requester: {
+      fullname: valueFrom(details, ['fullname', 'full_name']),
+      email: valueFrom(details, ['email']),
+      phone: valueFrom(details, ['phone', 'contact_number']),
+      address: valueFrom(details, ['address']),
+    },
+    bride: {
+      fullName: valueFrom(details, ['bride_full_name', "Bride's Full Name"]),
+      age: valueFrom(details, ['bride_age', "Bride's Age"]),
+      address: valueFrom(details, ['bride_address', "Bride's Address"]),
+      contact: valueFrom(details, ['bride_contact_number', "Bride's Contact Number"]),
+      father: valueFrom(details, ['bride_father_name', "Bride's Father Full Name"]),
+      mother: valueFrom(details, ['bride_mother_name', "Bride's Mother Full Name"]),
+    },
+    groom: {
+      fullName: valueFrom(details, ['groom_full_name', "Groom's Full Name"]),
+      age: valueFrom(details, ['groom_age', "Groom's Age"]),
+      address: valueFrom(details, ['groom_address', "Groom's Address"]),
+      contact: valueFrom(details, ['groom_contact_number', "Groom's Contact Number"]),
+      father: valueFrom(details, ['groom_father_name', "Groom's Father Full Name"]),
+      mother: valueFrom(details, ['groom_mother_name', "Groom's Mother Full Name"]),
+    },
+    legacyNotes: jsonDetails && Object.keys(jsonDetails).length === 0 ? decodeDisplayText(reservation.requirements || '') : '',
+  };
+}
+
+function DetailField({ label, value }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{label}</dt>
+      <dd className="mt-1 break-words text-sm leading-6 text-[#1f3342]">{value || '—'}</dd>
+    </div>
+  );
+}
+
+function DetailCard({ title, fields }) {
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+      <h4 className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-[#0f2337]">{title}</h4>
+      <dl className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
+        {fields.map(([label, value]) => <DetailField key={label} label={label} value={value} />)}
+      </dl>
+    </section>
+  );
+}
+
 async function fetchReservationDocument(documentId) {
   const response = await fetch(`${API_BASE}/reservations/download.php?id=${documentId}`, {
     credentials: 'include',
@@ -283,21 +481,154 @@ export default function AdminReservations() {
         {!loading && items.length === 0 && <p className="px-5 py-6 text-sm text-gray-500">No reservations found.</p>}
       </div>
 
-      <Modal isOpen={!!modal} onClose={closeModal} title="Review Reservation" size="lg">
+      <Modal isOpen={!!modal} onClose={closeModal} title="Review Reservation" size="xl">
         {modal && (
           <div className="space-y-5">
-            <div className="rounded-2xl bg-slate-50 p-4">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Reservation Overview</p>
-              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-lg font-semibold text-[#0f2337]">{modal.service_type}</p>
-                  <p className="text-sm text-slate-600">
-                    {modal.reservation_date} {modal.reservation_time?.slice(0, 5)}
+                  <p className="text-xl font-semibold text-[#0f2337]">{modal.service_type}</p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {modal.reservation_date || 'Date not provided'}{modal.reservation_time ? ` • ${modal.reservation_time.slice(0, 5)}` : ''}
                   </p>
                 </div>
                 <StatusBadge status={modal.status} />
               </div>
-              <p className="mt-3 text-sm text-slate-600">{modal.requirements || 'No additional notes.'}</p>
+              {modal.service_type === 'Marriage' ? (() => {
+                const presentation = marriagePresentation(modal);
+                return (
+                  <div className="mt-6 space-y-5">
+                    <section>
+                      <h4 className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">Requester Information</h4>
+                      <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+                        <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+                          <DetailField label="Full Name" value={presentation.requester.fullname} />
+                          <DetailField label="Email Address" value={presentation.requester.email} />
+                          <DetailField label="Phone Number" value={presentation.requester.phone} />
+                          <DetailField label="Address" value={presentation.requester.address} />
+                        </dl>
+                      </div>
+                    </section>
+                    <section>
+                      <h4 className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">Marriage Details</h4>
+                      <div className="grid gap-4 lg:grid-cols-2">
+                        <DetailCard
+                          title="Bride Information"
+                          fields={[
+                            ['Full Name', presentation.bride.fullName],
+                            ['Age', presentation.bride.age],
+                            ['Address', presentation.bride.address],
+                            ['Contact Number', presentation.bride.contact],
+                            ["Father's Full Name", presentation.bride.father],
+                            ["Mother's Full Name", presentation.bride.mother],
+                          ]}
+                        />
+                        <DetailCard
+                          title="Groom Information"
+                          fields={[
+                            ['Full Name', presentation.groom.fullName],
+                            ['Age', presentation.groom.age],
+                            ['Address', presentation.groom.address],
+                            ['Contact Number', presentation.groom.contact],
+                            ["Father's Full Name", presentation.groom.father],
+                            ["Mother's Full Name", presentation.groom.mother],
+                          ]}
+                        />
+                      </div>
+                    </section>
+                    {presentation.legacyNotes && (
+                      <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-900">{presentation.legacyNotes}</p>
+                    )}
+                  </div>
+                );
+              })() : modal.service_type === 'Baptism' ? (() => {
+                const presentation = baptismPresentation(modal);
+                return (
+                  <div className="mt-6 space-y-5">
+                    <DetailCard
+                      title="Child Information"
+                      fields={[
+                        ['First Name', presentation.child.firstName],
+                        ['Middle Name', presentation.child.middleName],
+                        ['Last Name', presentation.child.lastName],
+                        ['Sex', presentation.child.sex],
+                        ['Date of Birth', presentation.child.birthDate],
+                        ['Place of Birth', presentation.child.birthPlace],
+                      ]}
+                    />
+                    <DetailCard
+                      title="Address Information"
+                      fields={[
+                        ['House / Street', presentation.address.street],
+                        ['Barangay', presentation.address.barangay],
+                        ['Municipality', presentation.address.municipality],
+                        ['Province', presentation.address.province],
+                      ]}
+                    />
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <DetailCard title="Father Information" fields={[["Father's Full Name", presentation.parents.father]]} />
+                      <DetailCard title="Mother Information" fields={[["Mother's Full Name", presentation.parents.mother]]} />
+                    </div>
+                    <DetailCard
+                      title="Sponsor / Godparent Information"
+                      fields={[
+                        ['Name of Ninong / Ninang', presentation.sponsor.name],
+                        ['Contact Number', presentation.sponsor.contact],
+                      ]}
+                    />
+                    {presentation.legacyNotes && (
+                      <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-900">{presentation.legacyNotes}</p>
+                    )}
+                  </div>
+                );
+              })() : modal.service_type === 'Funeral' ? (() => {
+                const presentation = funeralPresentation(modal);
+                return (
+                  <div className="mt-6 space-y-5">
+                    <section>
+                      <h4 className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">Requester Information</h4>
+                      <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+                        <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+                          <DetailField label="Full Name" value={presentation.requester.fullname} />
+                          <DetailField label="Contact Number" value={presentation.requester.phone} />
+                          <DetailField label="Email Address" value={presentation.requester.email} />
+                          <DetailField label="Address" value={presentation.requester.address} />
+                        </dl>
+                      </div>
+                    </section>
+                    <DetailCard
+                      title="Deceased Information"
+                      fields={[
+                        ['Full Name', presentation.deceased.name],
+                        ['Age', presentation.deceased.age],
+                        ['Sex', presentation.deceased.sex],
+                        ['Date of Death', presentation.deceased.dateOfDeath],
+                        ['Residence / Address', presentation.deceased.residence],
+                        ['Date of Inquiry', presentation.deceased.inquiryDate],
+                        ['Spouse / Maiden Name', presentation.deceased.spouse],
+                        ['No. of Children', presentation.deceased.children],
+                      ]}
+                    />
+                    <DetailCard
+                      title="Funeral / Service Details"
+                      fields={[
+                        ['Civil Status', presentation.service.civilStatus],
+                        ['Cemetery', presentation.service.cemetery],
+                        ['Funeral Service', presentation.service.funeralService],
+                        ['Lot / Location', presentation.service.lot],
+                        ['Niche Information', presentation.service.niche],
+                        ['Ossuary Chamber', presentation.service.chamber],
+                      ]}
+                    />
+                    {presentation.legacyNotes && (
+                      <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-900">{presentation.legacyNotes}</p>
+                    )}
+                  </div>
+                );
+              })() : (
+                <p className="mt-3 break-words text-sm leading-6 text-slate-600">{decodeDisplayText(modal.requirements) || 'No additional notes.'}</p>
+              )}
               {modal.service_type === 'Mass Intention' && (
                 <div className="mt-3 rounded-xl border border-[#f2e4bb] bg-[#fffaf0] p-3 text-sm text-slate-700">
                   <p><strong>Requested For:</strong> {modal.intention_name || 'Not provided'}</p>
@@ -306,18 +637,6 @@ export default function AdminReservations() {
                   <p className="mt-1"><strong>Contact:</strong> {modal.phone || 'Not available'}</p>
                 </div>
               )}
-              {modal.service_type === 'Funeral' && (() => {
-                const details = parseServiceDetails(modal.service_details);
-                return (
-                  <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700">
-                    <p><strong>Deceased:</strong> {details.deceased_name || 'Not provided'}</p>
-                    <p className="mt-1"><strong>Date of Death:</strong> {details.date_of_death || 'Not provided'}</p>
-                    <p className="mt-1"><strong>Cemetery:</strong> {details.cemetery_type || 'Not provided'}</p>
-                    <p className="mt-1"><strong>Funeral Service:</strong> {details.funeral_service || 'Not provided'}</p>
-                    <p className="mt-1"><strong>Residence:</strong> {details.residence || 'Not provided'}</p>
-                  </div>
-                );
-              })()}
               {modal.service_type === 'Private Mass' && (() => {
                 const details = parseServiceDetails(modal.service_details);
                 return (

@@ -19,6 +19,7 @@ const STEPS = [
   "Personal Information",
   "Cemetery",
   "Funeral Details",
+  "Date & Time",
   "Requirements",
   "Review & Submit",
 ];
@@ -215,9 +216,11 @@ export default function FuneralReservationForm({
           !details.funeral_service_other.trim()))
     )
       return "Please select or specify the funeral service.";
-    if (step === 3 && (!date || !time))
+    if (step === 4 && (!date || !time))
       return "Please select an available funeral date and time.";
-    if (step === 4) {
+    if (step === 4 && !slots.some((slot) => slot.time === time && slot.status === "available"))
+      return "Please select an available funeral time slot.";
+    if (step === 5) {
       const missing = activeRequirements.filter(
         (item) => item.required && !files[item.type],
       );
@@ -234,7 +237,7 @@ export default function FuneralReservationForm({
   const submit = async (event) => {
     event.preventDefault();
     if (step !== STEPS.length - 1) return;
-    const message = [1, 2, 3, 4]
+    const message = [1, 2, 3, 4, 5]
       .map((stepToValidate) => validateStep(stepToValidate))
       .find(Boolean);
     if (message) {
@@ -502,6 +505,9 @@ export default function FuneralReservationForm({
                 )}
               </div>
             )}
+          </div>
+        )}
+        {step === 4 && (
             <div className="mt-6 rounded-[24px] border border-slate-200 bg-[#f8fafc] p-4 sm:p-5">
               <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                 Select Date
@@ -611,15 +617,14 @@ export default function FuneralReservationForm({
                 </div>
               )}
             </div>
-          </div>
         )}
-        {step === 4 && (
+        {step === 5 && (
           <DocumentUpload
             requirements={activeRequirements}
             onFilesChange={setFiles}
           />
         )}
-        {step === 5 && (
+        {step === 6 && (
           <div className="space-y-4 text-sm text-slate-700">
             <div className="rounded-2xl border border-slate-200 p-4">
               <h3 className="font-semibold text-[#0f2337]">

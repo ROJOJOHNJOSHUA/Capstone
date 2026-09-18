@@ -61,9 +61,13 @@ DB_PASS=your-infinityfree-database-password
 CORS_ORIGIN=https://holyfamilyparish.vercel.app
 SESSION_SAMESITE=None
 SESSION_SECURE=true
+TEXTBEE_API_KEY=your-textbee-api-key
+TEXTBEE_DEVICE_ID=your-textbee-device-id
+TEXTBEE_BASE_URL=https://api.textbee.dev/api/v1
 ```
 
 The frontend uses credentialed requests, so the API must return CORS headers for `https://holyfamilyparish.vercel.app` and the production session cookie must be secure with `SameSite=None`.
+SMS is sent by the VPS backend through TextBee, not by Vercel. The VPS must have all three `TEXTBEE_*` values in its server-side `.env`, and the configured Android device must be enabled and online.
 
 ## Features
 

@@ -32,12 +32,6 @@ export default function SystemLogs() {
 
   return (
     <DashboardLayout>
-      <div className="mb-6">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#a6813f]">Administration</p>
-        <h1 className="mt-2 font-display text-3xl text-[#1f3342]">System Logs</h1>
-        <p className="mt-2 text-sm text-[#7a7d7f]">Monitor important activities and changes performed within the system.</p>
-      </div>
-
       <div className="mb-5 grid gap-3 rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-4 shadow-sm sm:grid-cols-2 xl:grid-cols-6">
         <input value={filters.search} onChange={(event) => updateFilter('search', event.target.value)} placeholder="Search logs..." className="rounded-full border border-[#e7dfd2] bg-white px-4 py-2.5 text-xs outline-none focus:border-[#b18a45] xl:col-span-2" />
         <select value={filters.module} onChange={(event) => updateFilter('module', event.target.value)} className="rounded-full border border-[#e7dfd2] bg-white px-4 py-2.5 text-xs"><option value="">All Modules</option>{modules.map((item) => <option key={item}>{item}</option>)}</select>

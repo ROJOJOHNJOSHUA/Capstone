@@ -87,6 +87,7 @@ const MARRIAGE_STEPS = [
   { id: 'service', label: 'Service Type' },
   { id: 'personal', label: 'Personal Information' },
   { id: 'couple', label: 'Bride & Groom' },
+  { id: 'schedule', label: 'Date & Time' },
   { id: 'requirements', label: 'Requirements' },
   { id: 'review', label: 'Review' },
 ];
@@ -330,7 +331,7 @@ export default function Reservation() {
     refreshMonthlyStatuses(form.service_type, calendarMonth);
   }, [form.service_type, calendarMonth]);
 
-  const todayIso = toIsoDate(new Date());
+  const todayIso = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
   const minDate = (() => {
     if (form.service_type !== 'Private Mass') return todayIso;
     const d = new Date();
@@ -419,7 +420,11 @@ export default function Reservation() {
       setError('Please complete all bride and groom information fields before continuing.');
       return;
     }
-    if (isMarriageFlow && currentStep === 3) {
+    if (isMarriageFlow && currentStep === 3 && !canAdvanceFromSchedule()) {
+      setError('Please choose an available date and time slot.');
+      return;
+    }
+    if (isMarriageFlow && currentStep === 4) {
       const missingRequired = missingRequiredDocuments();
       if (missingRequired.length > 0) {
         setError(`Please upload all required documents: ${missingRequired.map((d) => d.name).join(', ')}`);
@@ -441,7 +446,7 @@ export default function Reservation() {
       setError('Please choose an available date and time slot.');
       return;
     }
-    if ((isBaptismFlow ? currentStep === 4 : currentStep === 3)) {
+    if (!isMarriageFlow && (isBaptismFlow ? currentStep === 4 : currentStep === 3)) {
       const missingRequired = missingRequiredDocuments();
       if (missingRequired.length > 0) {
         setError(`Please upload all required documents: ${missingRequired.map((d) => d.name).join(', ')}`);
@@ -457,23 +462,6 @@ export default function Reservation() {
     setCurrentStep((prev) => Math.max(prev - 1, 0));
   };
 
-  const findMarriageSchedule = async () => {
-    const months = [calendarMonth];
-    const nextMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
-    months.push(toIsoMonth(nextMonth));
-    for (const month of months) {
-      const response = await checkMonthlyAvailability(month, 'Marriage');
-      const dates = response.data.dates || {};
-      for (const date of Object.keys(dates).sort()) {
-        if (date <= todayIso || dates[date]?.status !== 'available') continue;
-        const dayResponse = await checkAvailability(date, 'Marriage');
-        const slot = (dayResponse.data.slots || []).find((item) => item.status === 'available');
-        if (slot) return { date, time: slot.time };
-      }
-    }
-    throw new Error('No available Marriage schedule is currently available. Please try again later.');
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (currentStep !== activeSteps.length - 1) return;
@@ -483,24 +471,11 @@ export default function Reservation() {
     let reservationDate = form.reservation_date;
     let reservationTime = form.reservation_time;
     const missingStepDocuments = missingRequiredDocuments();
-    if (isMarriageFlow && (!canAdvanceMarriagePersonal() || !canAdvanceMarriageCouple() || missingStepDocuments.length > 0)) {
+    if (isMarriageFlow && (!canAdvanceMarriagePersonal() || !canAdvanceMarriageCouple() || !canAdvanceFromSchedule() || missingStepDocuments.length > 0)) {
       setError(missingStepDocuments.length > 0
         ? `Please upload all required documents: ${missingStepDocuments.map((d) => d.name).join(', ')}`
         : 'Please complete all required Marriage information before submitting.');
       return;
-    }
-    if (isMarriageFlow) {
-      submitInProgress.current = true;
-      let marriageSchedule;
-      try {
-        marriageSchedule = await findMarriageSchedule();
-      } catch (scheduleError) {
-        submitInProgress.current = false;
-        setError(scheduleError.message);
-        return;
-      }
-      reservationDate = marriageSchedule.date;
-      reservationTime = marriageSchedule.time;
     }
     if (!isMarriageFlow && (!canAdvanceFromDetails(1) || (isBaptismFlow && !canAdvanceFromDetails(2)) || !canAdvanceFromSchedule()) || missingStepDocuments.length > 0) {
       setError(missingStepDocuments.length > 0
@@ -919,7 +894,7 @@ export default function Reservation() {
                 </div>
               )}
 
-              {!isMarriageFlow && (isBaptismFlow ? currentStep === 3 : currentStep === 2) && (
+              {(isMarriageFlow ? currentStep === 3 : (isBaptismFlow ? currentStep === 3 : currentStep === 2)) && (
                 <>
                   <div className="rounded-[24px] border border-slate-200 bg-[#f8fafc] p-4 sm:p-5">
                     <div className="mb-3 flex items-center justify-between gap-3">
@@ -1069,7 +1044,7 @@ export default function Reservation() {
                 </>
               )}
 
-              {(isBaptismFlow ? currentStep === 4 : currentStep === 3) && (
+              {(isMarriageFlow ? currentStep === 4 : (isBaptismFlow ? currentStep === 4 : currentStep === 3)) && (
                 <div className="space-y-5">
                   <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4 sm:p-5">
                     <div className="mb-3 flex items-center justify-between">
@@ -1154,7 +1129,7 @@ export default function Reservation() {
                 </div>
               )}
 
-              {isMarriageFlow && currentStep === 4 && (
+              {isMarriageFlow && currentStep === 5 && (
                 <div className="space-y-5">
                   <div className="rounded-[24px] border border-slate-200 bg-[#f8fafc] p-4 sm:p-5">
                     <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Review Marriage Request</h3>
@@ -1176,6 +1151,14 @@ export default function Reservation() {
                           {fields.map((field) => <p key={field.key} className="mt-1"><strong>{field.label}:</strong> {form.serviceDetails[field.key] || 'Not provided'}</p>)}
                         </div>
                       ))}
+                      <div className="rounded-xl border border-slate-200 bg-white p-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Date &amp; Time</p>
+                        <p className="mt-1 font-semibold text-[#0f2337]">
+                          {form.reservation_date ? new Date(form.reservation_date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : 'Not selected'}
+                          {' · '}
+                          {form.reservation_time ? formatSlotTime(form.reservation_time) : 'Not selected'}
+                        </p>
+                      </div>
                       <div className="rounded-xl border border-slate-200 bg-white p-3">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Marriage Requirements</p>
                         <div className="mt-2 space-y-1">
