@@ -3,10 +3,19 @@
  * Database connection — Holy Family Parish
  */
 
-define('DB_HOST', 'sql303.infinityfree.com');
-define('DB_NAME', 'if0_42873789_holy_family_parish');
-define('DB_USER', 'if0_42873789');
-define('DB_PASS', 'YuVmKvwvmR');
+require_once __DIR__ . '/../server/config/env.php';
+
+$requiredDatabaseSettings = ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASS'];
+foreach ($requiredDatabaseSettings as $setting) {
+    if (getenv($setting) === false || ($setting !== 'DB_PASS' && getenv($setting) === '')) {
+        throw new RuntimeException("Missing required database setting: {$setting}");
+    }
+}
+
+define('DB_HOST', getenv('DB_HOST'));
+define('DB_NAME', getenv('DB_NAME'));
+define('DB_USER', getenv('DB_USER'));
+define('DB_PASS', getenv('DB_PASS'));
 
 function getDB(): PDO
 {

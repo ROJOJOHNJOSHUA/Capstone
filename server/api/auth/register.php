@@ -21,7 +21,12 @@ if (!empty($errors)) {
     errorResponse('Validation failed.', 422, $errors);
 }
 
-$db = getDB();
+try {
+    $db = getDB();
+} catch (Throwable $error) {
+    error_log('Registration database connection failed: ' . $error->getMessage());
+    errorResponse('Registration service is temporarily unavailable. Please try again later.', 503);
+}
 $fullname = trim((string) $data['fullname']);
 $email = strtolower(trim($data['email']));
 $phone = trim((string) $data['phone']);
