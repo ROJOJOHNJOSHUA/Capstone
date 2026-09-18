@@ -2,7 +2,8 @@
 
 $requiredDatabaseSettings = ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASS'];
 foreach ($requiredDatabaseSettings as $setting) {
-    if (getenv($setting) === false || getenv($setting) === '') {
+    // A blank DB_PASS is valid for a default local XAMPP MySQL installation.
+    if (getenv($setting) === false || ($setting !== 'DB_PASS' && getenv($setting) === '')) {
         throw new RuntimeException("Missing required database setting: {$setting}");
     }
 }
