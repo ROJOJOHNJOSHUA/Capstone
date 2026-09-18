@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:client*",
-      "destination": "https://holyfamilyparish.tech/api/:client*"
+      "destination": "https://holyfamilyparish.freedev.app/server/api/:client*"
     },
     {
       "source": "/((?!api/).*)",
