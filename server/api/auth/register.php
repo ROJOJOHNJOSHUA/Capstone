@@ -12,6 +12,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $data = getJsonInput();
 
+if ((getenv('APP_DEBUG') ?: 'false') === 'true') {
+    error_log('Registration request received for email: ' . strtolower(trim((string) ($data['email'] ?? ''))));
+}
+
 if (!empty($data['role']) && strtolower(trim($data['role'])) !== 'user') {
     errorResponse('Admin accounts cannot be created through registration.', 403);
 }
@@ -23,6 +27,9 @@ if (!empty($errors)) {
 
 try {
     $db = getDB();
+    if ((getenv('APP_DEBUG') ?: 'false') === 'true') {
+        error_log('Registration database: ' . (getenv('DB_HOST') ?: 'unknown') . '/' . (getenv('DB_NAME') ?: 'unknown'));
+    }
 } catch (Throwable $error) {
     error_log('Registration database connection failed: ' . $error->getMessage());
     errorResponse('Registration service is temporarily unavailable. Please try again later.', 503);
@@ -51,7 +58,12 @@ foreach ($lockNames as $lockName) {
     $acquiredLocks[] = $lockName;
 }
 
-$check = $db->query("SELECT fullname, phone, email FROM users WHERE role = 'user'");
+try {
+    $check = $db->query("SELECT fullname, phone, email FROM users WHERE role = 'user'");
+} catch (Throwable $error) {
+    error_log('Registration duplicate check failed: ' . $error->getMessage());
+    errorResponse('Registration service is temporarily unavailable. Please try again later.', 503);
+}
 $duplicateErrors = [];
 foreach ($check->fetchAll() as $existing) {
     if (normalizeRegistrationName($existing['fullname']) === normalizeRegistrationName($fullname)) {
@@ -76,14 +88,22 @@ $hash = password_hash($data['password'], PASSWORD_DEFAULT);
 $stmt = $db->prepare(
     'INSERT INTO users (fullname, email, phone, address, password, role) VALUES (?, ?, ?, ?, ?, ?)'
 );
-$stmt->execute([
-    $fullname,
-    $email,
-    $phone,
-    trim($data['address'] ?? ''),
-    $hash,
-    'user',
-]);
+try {
+    $stmt->execute([
+        $fullname,
+        $email,
+        $phone,
+        trim($data['address'] ?? ''),
+        $hash,
+        'user',
+    ]);
+    if ((getenv('APP_DEBUG') ?: 'false') === 'true') {
+        error_log('Registration insert succeeded with user id: ' . $db->lastInsertId());
+    }
+} catch (PDOException $error) {
+    error_log('Registration insert failed: ' . $error->getMessage());
+    errorResponse('The account could not be saved. Please verify the database schema and permissions.', 500);
+}
 
 $user = [
     'id' => (int) $db->lastInsertId(),

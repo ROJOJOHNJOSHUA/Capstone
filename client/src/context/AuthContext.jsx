@@ -12,8 +12,8 @@ const AuthContext = createContext(null);
 const USER_STORAGE_KEY = 'hf_parish_user';
 
 function extractUser(res) {
-  const payload = res?.data;
-  return payload?.user ?? payload?.data?.user ?? null;
+  const payload = res?.data ?? res;
+  return payload?.user ?? payload?.data?.user ?? payload?.data ?? null;
 }
 
 
@@ -85,6 +85,9 @@ export function AuthProvider({ children }) {
     try {
       const res = await apiLogin({ email, password });
       const userData = extractUser(res);
+      if (!userData?.id || !userData?.role) {
+        throw new Error('Login failed: Invalid user data received.');
+      }
       saveUser(userData);
       setWelcomeMessage(`Welcome, ${userData?.fullname || 'parishioner'}!`);
       return userData;

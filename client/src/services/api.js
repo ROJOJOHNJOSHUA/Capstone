@@ -7,6 +7,28 @@ const api = axios.create({
   withCredentials: true,
 });
 
+const isDevelopment = import.meta.env.DEV;
+
+function safeDebugData(data) {
+  if (!data || typeof data !== 'object') return data;
+  const copy = { ...data };
+  ['password', 'confirm_password', 'confirm', 'token', 'access_token'].forEach((key) => {
+    if (key in copy) copy[key] = '[REDACTED]';
+  });
+  return copy;
+}
+
+api.interceptors.request.use((config) => {
+  if (isDevelopment) {
+    console.log('[API REQUEST]', {
+      method: config.method?.toUpperCase(),
+      url: `${config.baseURL || ''}${config.url || ''}`,
+      data: safeDebugData(config.data),
+    });
+  }
+  return config;
+});
+
 // Endpoints where a 401 is an *expected* outcome (bad credentials on login,
 // or the initial "am I logged in?" probe) rather than evidence that a
 // previously-valid session just died mid-use. These must not trigger the
@@ -30,6 +52,13 @@ export function setUnauthorizedHandler(handler) {
 
 api.interceptors.response.use(
   (res) => {
+    if (isDevelopment) {
+      console.log('[API SUCCESS]', {
+        status: res.status,
+        url: `${res.config?.baseURL || ''}${res.config?.url || ''}`,
+        response: res.data,
+      });
+    }
     const body = res.data;
     if (body && body.success === true && Object.prototype.hasOwnProperty.call(body, 'data')) {
       res.data = body.data;
@@ -37,6 +66,14 @@ api.interceptors.response.use(
     return res;
   },
   (err) => {
+    if (isDevelopment) {
+      console.error('[API ERROR]', {
+        status: err.response?.status,
+        url: `${err.config?.baseURL || ''}${err.config?.url || ''}`,
+        response: err.response?.data,
+        network: err.message,
+      });
+    }
     const status = err.response?.status;
     const requestUrl = err.config?.url || '';
     const isAuthProbe = AUTH_PROBE_PATHS.some((path) => requestUrl.includes(path));
@@ -55,6 +92,7 @@ api.interceptors.response.use(
 );
 
 export const register = (data) => api.post('/auth/register.php', data);
+export const testConnection = () => api.get('/health.php');
 export const login = (data) => api.post('/auth/login.php', data);
 export const logout = () => api.post('/auth/logout.php');
 export const requestPasswordReset = (data) => api.post('/auth/requestPasswordReset.php', data);

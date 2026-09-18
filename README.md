@@ -49,9 +49,9 @@ cd client
 npm run build
 ```
 
-Deploy `client/dist` to Vercel with `VITE_API_URL=https://holyfamilyparish.freedev.app/server/api`.
+Deploy `client/dist` to Vercel with `VITE_API_URL=/api`.
 
-Deploy the `server` directory so the API is available at `https://holyfamilyparish.freedev.app/server/api`, and create a server-side `server/.env` (never commit it):
+Deploy the `server` directory so the API is available at `https://holyfamilyparish.tech/api`, and create a server-side `server/.env` (never commit it):
 
 ```dotenv
 DB_HOST=your-infinityfree-mysql-host

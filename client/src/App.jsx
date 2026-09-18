@@ -5,6 +5,7 @@ import { GuestRoute } from './routes/GuestRoute';
 import { UserRoute } from './routes/UserRoute';
 import { AdminRoute } from './routes/AdminRoute';
 import { AuthenticatedRoute } from './routes/AuthenticatedRoute';
+import { testConnection } from './services/api';
 
 // Public pages
 import Home from './pages/Home';
@@ -63,9 +64,44 @@ function LoginWelcomeAlert() {
   );
 }
 
+function LocalDevelopmentDiagnostics() {
+  useEffect(() => {
+    if (!import.meta.env.DEV) return undefined;
+
+    console.info('=================================');
+    console.info('LOCAL DEVELOPMENT MODE');
+    console.info('Frontend: http://localhost:5173');
+    console.info('API: /api -> local PHP server');
+    console.info('=================================');
+
+    testConnection()
+      .then((response) => {
+        const health = response?.data ?? response;
+        console.info('[LOCAL CONNECTION]', {
+          Frontend: 'OK',
+          Backend: health?.backend || 'unknown',
+          Database: health?.database_name || 'unknown',
+          MySQL: health?.database || 'unknown',
+        });
+      })
+      .catch((error) => {
+        console.error('[LOCAL CONNECTION]', {
+          Frontend: 'OK',
+          Backend: 'FAILED or unreachable',
+          Database: 'not checked',
+          MySQL: error.message || 'not checked',
+        });
+      });
+    return undefined;
+  }, []);
+
+  return <div className="fixed bottom-3 left-3 z-[400] rounded-md bg-amber-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-900 shadow">Local Dev</div>;
+}
+
 export default function App() {
   return (
     <>
+      <LocalDevelopmentDiagnostics />
       <LoginWelcomeAlert />
       <Routes>
       <Route path="/" element={<Home />} />
