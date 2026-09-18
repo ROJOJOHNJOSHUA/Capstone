@@ -19,6 +19,10 @@ function IconChart({ className = 'h-[18px] w-[18px]' }) {
   return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 19V5M4 19h16" /><path d="M7 15l3-4 3 2 5-7" /></svg>;
 }
 
+function IconChurch({ className = 'h-5 w-5' }) {
+  return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 21h16M6 21V10l6-4 6 4v11M9 21v-5h6v5M12 3v5M9.5 5.5h5" /></svg>;
+}
+
 export default function Sidebar({ isMobileOpen = false, onClose = () => {} }) {
   const { isAdmin } = useAuth();
   const { t } = useSettings();
@@ -47,16 +51,16 @@ export default function Sidebar({ isMobileOpen = false, onClose = () => {} }) {
   if (isAdmin) {
     return (
       <aside
-        className={`fixed left-0 top-16 sm:top-20 z-40 h-[calc(100dvh-4rem)] sm:h-[calc(100dvh-5rem)] w-[82vw] max-w-[280px] overflow-y-auto border-r border-[#e7dfd2] bg-[#f7f3eb] shadow-[0_12px_28px_rgba(83,65,34,0.08)] transition-transform duration-200 dark:border-gray-700 dark:bg-gray-900 xl:top-0 xl:h-screen xl:w-64 xl:translate-x-0 xl:shadow-[0_12px_28px_rgba(83,65,34,0.08)] ${
+        className={`fixed left-0 top-16 sm:top-20 z-40 h-[calc(100dvh-4rem)] sm:h-[calc(100dvh-5rem)] w-[82vw] max-w-[280px] overflow-y-auto border-r border-[#e7dfd2] bg-[#f7f3eb] shadow-[0_12px_28px_rgba(83,65,34,0.08)] transition-transform duration-200 dark:border-gray-700 dark:bg-gray-900 xl:top-0 xl:h-screen xl:w-64 xl:translate-x-0 xl:overflow-hidden xl:shadow-[0_12px_28px_rgba(83,65,34,0.08)] ${
           isMobileOpen ? 'translate-x-0' : '-translate-x-full xl:translate-x-0'
         }`}
       >
         <div className="flex h-full flex-col p-4">
-          <div className="mb-4 flex items-center gap-2 border-b border-[#e7dfd2] px-2 pb-4">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full border border-[#c9a25c] text-[#b18a45]"><IconDashboard className="h-5 w-5" /></span>
+          <div className="mb-4 flex shrink-0 items-center gap-2 border-b border-[#e7dfd2] px-2 pb-4">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#c9a25c] text-[#b18a45]"><IconChurch className="h-5 w-5" /></span>
             <span className="leading-tight"><span className="block font-display text-sm font-bold text-[#273746]">Holy Family Parish</span><span className="block text-[7px] uppercase tracking-[0.18em] text-[#9a8666]">Faith · Service · Community</span></span>
           </div>
-          <nav className="space-y-1.5" aria-label="Admin navigation">
+          <nav className="min-h-0 flex-1 space-y-1.5 overflow-y-auto" aria-label="Admin navigation">
             {adminLinks.map((link) => (
               <NavLink
                 key={link.to}
@@ -93,16 +97,16 @@ export default function Sidebar({ isMobileOpen = false, onClose = () => {} }) {
 
   return (
     <aside
-      className={`fixed left-0 top-16 sm:top-20 z-40 h-[calc(100dvh-4rem)] sm:h-[calc(100dvh-5rem)] w-[82vw] max-w-[280px] overflow-y-auto border-r border-[#e7dfd2] bg-[#fbf8f1] shadow-[0_12px_28px_rgba(83,65,34,0.08)] transition-transform duration-200 dark:border-gray-700 dark:bg-gray-900 xl:top-0 xl:h-screen xl:w-64 xl:translate-x-0 ${
+      className={`fixed left-0 top-16 sm:top-20 z-40 h-[calc(100dvh-4rem)] sm:h-[calc(100dvh-5rem)] w-[82vw] max-w-[280px] overflow-y-auto border-r border-[#e7dfd2] bg-[#fbf8f1] shadow-[0_12px_28px_rgba(83,65,34,0.08)] transition-transform duration-200 dark:border-gray-700 dark:bg-gray-900 xl:top-0 xl:h-screen xl:w-64 xl:translate-x-0 xl:overflow-hidden ${
         isMobileOpen ? 'translate-x-0' : '-translate-x-full xl:translate-x-0'
       }`}
     >
       <div className="flex flex-col h-full px-3 py-5">
-          <div className="mb-4 hidden items-center gap-2 border-b border-[#e7dfd2] px-2 pb-4 xl:flex">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full border border-[#c9a25c] text-[#b18a45]"><IconDashboard className="h-5 w-5" /></span>
+          <div className="mb-4 hidden shrink-0 items-center gap-2 border-b border-[#e7dfd2] px-2 pb-4 xl:flex">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#c9a25c] text-[#b18a45]"><IconChurch className="h-5 w-5" /></span>
             <span className="leading-tight"><span className="block font-display text-sm font-bold text-[#273746]">Holy Family Parish</span><span className="block text-[7px] uppercase tracking-[0.18em] text-[#9a8666]">Faith · Service · Community</span></span>
           </div>
-        <nav className="space-y-1.5 mt-1" aria-label="Parishioner navigation">
+        <nav className="min-h-0 flex-1 space-y-1.5 overflow-y-auto mt-1" aria-label="Parishioner navigation">
           {userPageLinks.map(({ to, label, Icon }) => (
             <NavLink
               key={to}
