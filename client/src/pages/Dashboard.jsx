@@ -64,7 +64,7 @@ const withinWeek = (item) => {
   return Date.now() - created.getTime() <= 7 * 24 * 60 * 60 * 1000;
 };
 
-const isApproved = (status) => ['Approved', 'Confirmed'].includes(status);
+const isApproved = (status) => ['Approved', 'Paid'].includes(status);
 const isPending = (status) => ['Pending', 'Submitted', 'In Review', 'Under Review'].includes(status);
 
 function manilaTodayIso() {

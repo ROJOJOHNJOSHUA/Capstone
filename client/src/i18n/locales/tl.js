@@ -120,6 +120,7 @@ export default {
   'users.of': 'ng',
   'status.Pending': 'Nakabinbin',
   'status.Approved': 'Aprubado',
+  'status.Paid': 'Bayad',
   'status.Rejected': 'Tinanggihan',
   'status.Completed': 'Kumpleto',
   'service.Marriage': 'Kasal',

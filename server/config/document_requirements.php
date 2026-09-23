@@ -22,9 +22,19 @@ return [
             'type' => 'baptismal_certificate',
         ],
         [
+            'name' => 'Baptismal Certificate of Sponsor',
+            'required' => true,
+            'type' => 'sponsor_baptismal_certificate',
+        ],
+        [
             'name' => 'Birth Certificate',
             'required' => true,
             'type' => 'birth_certificate',
+        ],
+        [
+            'name' => 'Permit of Home Church (Optional only if you are not a resident of Putiao, Pilar)',
+            'required' => false,
+            'type' => 'home_church_permit',
         ],
     ],
 
@@ -33,6 +43,11 @@ return [
             'name' => 'Marriage License',
             'required' => true,
             'type' => 'marriage_license',
+        ],
+        [
+            'name' => 'CENOMAR',
+            'required' => true,
+            'type' => 'cenomar',
         ],
         [
             'name' => 'Baptismal Certificate',
@@ -45,9 +60,9 @@ return [
             'type' => 'confirmation_certificate',
         ],
         [
-            'name' => 'Couple Valid IDs',
+            'name' => 'Marriage Certificate of Sponsor',
             'required' => true,
-            'type' => 'couple_valid_ids',
+            'type' => 'marriage_certificate_of_sponsor',
         ],
         [
             'name' => 'Pre-Cana Seminar Certificate',

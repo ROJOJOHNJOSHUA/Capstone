@@ -94,7 +94,7 @@ function serviceTypes(): array
 
 function reservationStatuses(): array
 {
-    return ['Pending', 'Under Review', 'Approved', 'Rejected', 'Completed', 'Cancelled'];
+    return ['Pending', 'Under Review', 'Approved', 'Paid', 'Rejected', 'Completed', 'Cancelled'];
 }
 
 function validateEmail(string $email): bool

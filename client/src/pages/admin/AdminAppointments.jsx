@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import StatusBadge from '../../components/cards/StatusBadge';
 import Modal from '../../components/forms/Modal';
-import { STATUSES } from '../../utils/constants';
+import { APPOINTMENT_STATUSES } from '../../utils/constants';
 import { getAppointments, updateAppointment } from '../../services/api';
 
 export default function AdminAppointments() {
@@ -144,7 +144,7 @@ export default function AdminAppointments() {
             <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Filter status</label>
             <select className="input-field max-w-xs" value={filter} onChange={(e) => setFilter(e.target.value)}>
               <option value="All">All Status</option>
-              {STATUSES.map((s) => (
+              {APPOINTMENT_STATUSES.map((s) => (
                 <option key={s} value={s}>
                   {s === 'Pending' ? 'Under Review' : s}
                 </option>

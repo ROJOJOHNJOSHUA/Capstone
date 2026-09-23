@@ -11,6 +11,32 @@ const infoCards = [
   ['Donation', 'Our parish accepts donations to support our ministries and services.', '♥'],
 ];
 
+const leadershipTimeline = [
+  { name: 'REV. FR. ARNEL D. AYO', location: 'Albay', tenure: 'Jan 3, 2020 - Present', image: '/diocese.png' },
+  { name: 'REV. FR. ROWAN E. GRAMONTE', location: 'Sorsogon', tenure: 'Feb 1, 2016 - Jan 3, 2020', image: '/diocese.png' },
+  { name: 'REV. MSGR. REYNALDO A. MABUTE', location: 'Samar', tenure: 'July 1, 2013 - Jan 31, 2016', image: '/diocese.png' },
+  { name: 'REV. FR. EFREN P. BANTOG, SOLT', location: 'Daraga, Albay', tenure: 'June 15, 2011 - June 30, 2013', image: '/diocese.png' },
+  { name: 'REV. FR. HENRY B. BERCASIO, SOLT', location: 'Bacacay, Albay', tenure: 'May 31, 2009 - June 15, 2011', image: '/diocese.png' },
+  { name: 'REV. FR. JOSE NESTOR A. BERANGO, JR. SOLT', location: 'Bacacay, Albay', tenure: 'June 4, 2005 - May 31, 2009', image: '/diocese.png' },
+  { name: 'REV. FR. REYNALDO B. CLUTARIO, JR. SOLT', location: 'Tiwi, Albay', tenure: 'May 5, 2002 - May 31, 2005', image: '/diocese.png' },
+  { name: 'REV. FR. GIL D. SALIGUMBA, SOLT', location: 'Legazpi City', tenure: 'Jan 15, 1997 - May 5, 2002', image: '/diocese.png' },
+  { name: 'REV. FR. WILFREDO ALVARADO, SOLT', location: 'Legazpi City', tenure: 'July 11, 1994 - Jan 15, 1997', image: '/diocese.png' },
+  { name: 'REV. FR. FRANKLIN H. SAN JUAN', location: 'Masbate', tenure: 'July 16, 1987 - July 11, 1994', image: '/diocese.png' },
+  { name: 'REV. FR. ALFREDO CANTONJOS', location: 'San Jacinto, Masbate', tenure: 'Nov 5, 1981 - July 16, 1987', image: '/diocese.png' },
+  { name: 'REV. FR. BENJAMIN VILCHEZ', location: 'Catanduanes', tenure: 'Dec 28, 1977 - Nov 5, 1981', image: '/diocese.png' },
+  { name: 'REV. FR. DOMINADOR PEREZ', location: 'Sorsogon', tenure: 'July 10, 1969 - Dec 25, 1977', image: '/diocese.png' },
+  { name: 'REV. FR. GREGORIO TRIUMFANTE', location: 'Catanduanes', tenure: 'Nov 19, 1968 - July 10, 1969', image: '/diocese.png' },
+  { name: 'REV. FR. VICENTE RAMOS', location: 'Masbate', tenure: 'Nov 19, 1966 - Nov 19, 1968', image: '/diocese.png' },
+  { name: 'REV. FR. JOSE JACOBO', location: 'Naga, Camarines Sur', tenure: 'June 29, 1959 - July 15, 1966', image: '/diocese.png' },
+  { name: 'REV. FR. FRANCISCO HERMIDA', location: 'Magallanes, Sorsogon', tenure: 'May 20, 1954 - June 29, 1959', image: '/diocese.png' },
+  { name: 'REV. FR. BRIGIDO GARCILLANOSA', location: 'Bombom, Camarines Sur', tenure: 'Oct 18, 1941 - May 20, 1954', image: '/diocese.png' },
+  { name: 'MSGR. PEDRO LANUZA', location: 'Iriga, Camarines Sur', tenure: 'July 30, 1938 - Oct 18, 1941', image: '/diocese.png' },
+  { name: 'REV. FR. FELIMON CASTELLAR', location: 'Tabaco, Albay', tenure: 'April 3, 1938 - July 30, 1938', image: '/diocese.png' },
+  { name: 'REV. FR. RAFAEL QUIMPO', location: 'Naga, Camarines Sur', tenure: 'March 2, 1936 - April 3, 1938', image: '/diocese.png' },
+  { name: 'REV. FR. MARIONO CALINOG', location: 'Camarines Sur', tenure: 'Sept 23, 1920 - March 2, 1936', image: '/diocese.png' },
+  { name: 'REV. FR. SIPLICIO DIÑO', location: 'Bulusan, Sorsogon', tenure: 'May 14, 1916 - Sept 23, 1920', image: '/diocese.png' },
+];
+
 export default function About() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [leadershipOpen, setLeadershipOpen] = useState(false);
@@ -84,29 +110,53 @@ export default function About() {
         </div>
       </Modal>
       <Modal isOpen={leadershipOpen} onClose={() => setLeadershipOpen(false)} title="Our Leadership" size="lg" backdropClassName="bg-[#14212b]/55">
-        <div className="grid max-h-[calc(100dvh-10rem)] gap-6 overflow-y-auto pr-1 md:grid-cols-2 md:items-center">
-          <div>
-            <img src="/faith.png" alt="Holy Family Parish altar and pastoral ministry" className="h-64 w-full rounded-xl object-cover md:h-full md:min-h-[22rem]" />
-          </div>
-          <div className="space-y-4 text-sm leading-7 text-[#6e7274]">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#b18a45]">Pastoral leadership</p>
-            <h4 className="font-display text-2xl text-[#273746]">Serving with faith and care</h4>
-            <p>Our parish priest and pastoral leaders guide Holy Family Parish through prayer, worship, and compassionate service. They accompany families through important moments of faith and help nurture a welcoming community.</p>
-            <p>Working together with parish ministries and volunteers, our leaders support the spiritual growth of every parishioner and keep the parish focused on faith, service, and community.</p>
-          </div>
+        <div className="max-h-[calc(100dvh-10rem)] space-y-3 overflow-y-auto pr-1">
+          {leadershipTimeline.map((priest, index) => (
+            <div
+              key={`${priest.name}-${index}`}
+              className="flex items-center gap-4 rounded-2xl border border-[#e6ddcf] bg-[#fffdf9] p-3 shadow-[0_8px_20px_rgba(83,65,34,0.05)] sm:p-4"
+            >
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-[#e3d6bf] bg-[#f8f1e3] sm:h-20 sm:w-20">
+                <img src={priest.image || '/diocese.png'} alt={priest.name} className="h-10 w-10 object-contain sm:h-12 sm:w-12" />
+              </div>
+
+              <div className="min-w-0 flex-1 text-left text-[#273746]">
+                <p className="font-display text-[11px] font-bold uppercase tracking-[0.12em] sm:text-sm">
+                  {priest.name}
+                </p>
+                <p className="mt-1 text-[11px] font-medium text-[#4d5860] sm:text-sm">{priest.location}</p>
+                <p className="mt-1 text-[11px] font-medium text-[#4d5860] sm:text-sm">{priest.tenure}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </Modal>
       <Modal isOpen={donationOpen} onClose={() => setDonationOpen(false)} title="Support Our Parish" size="md" backdropClassName="bg-[#14212b]/55">
         <div className="space-y-5 text-center">
           <p className="mb-2 text-left text-sm leading-7 text-[#6e7274]">You can send your donations to the church bank accounts listed below.</p>
           <div className="grid gap-3 text-left sm:grid-cols-2">
-            <div className="rounded-xl border border-[#e6ddcf] bg-[#faf8f1] p-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#b18a45]">BPI</p>
-              <p className="mt-2 text-lg font-semibold tracking-wide text-[#273746]">09673941188<br></br><span className='text-[10px] font-semibold uppercase tracking-[0.25em] text-[#b18a45]'>holy family parish</span> </p>
+            <div className="flex min-h-[118px] flex-col justify-start rounded-[12px] bg-[#1a99f3] p-0 text-white shadow-[0_8px_16px_rgba(26,153,243,0.14)]">
+              <div className="px-3 pt-2 text-[22px] font-black leading-[0.9] tracking-[-0.06em] text-white mt-2">GCash</div>
+
+              <div className="px-3 pb-2 pt-1">
+                <div className="text-[8px] font-semibold uppercase tracking-[0.14em] text-white/75">Account Name</div>
+                <div className="text-[14px] font-bold leading-tight text-white">John Joshua Rojo</div>
+
+                <div className="mt-1 text-[8px] font-semibold uppercase tracking-[0.14em] text-white/75">Account Number</div>
+                <div className="text-[14px] font-bold leading-tight tracking-[0.08em] text-white">09673941188</div>
+              </div>
             </div>
-            <div className="rounded-xl border border-[#e6ddcf] bg-[#faf8f1] p-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#b18a45]">GCash</p>
-              <p className="mt-2 text-lg font-semibold tracking-wide text-[#273746]">09673941188<br></br><span className='text-[10px] font-semibold uppercase tracking-[0.25em] text-[#b18a45]'>John Joshua Rojo</span> </p>
+
+            <div className="flex min-h-[118px] flex-col justify-start rounded-[12px] bg-[#8fe3a4] p-0 text-slate-900 shadow-[0_8px_16px_rgba(143,227,164,0.14)]">
+              <div className="px-3 pt-2 text-[22px] font-black leading-[0.9] tracking-[-0.06em] text-slate-900 mt-2">LandBank</div>
+
+              <div className="px-3 pb-2 pt-1">
+                <div className="text-[8px] font-semibold uppercase tracking-[0.14em] text-slate-800/75">Account Name</div>
+                <div className="text-[14px] font-bold leading-tight text-slate-900">Holy Family Parish</div>
+
+                <div className="mt-1 text-[8px] font-semibold uppercase tracking-[0.14em] text-slate-800/75">Account Number</div>
+                <div className="text-[14px] font-bold leading-tight tracking-[0.08em] text-slate-900">09673941188</div>
+              </div>
             </div>
           </div>
           <p className="text-xs leading-6 text-[#8a8d8f]">The parish's gratitude is heartfelt because of your support.</p>

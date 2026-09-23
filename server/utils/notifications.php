@@ -160,6 +160,7 @@ function notifyReservationStatusChange(PDO $db, int $reservationId, string $stat
 
     $messages = [
         'Approved' => "Your {$service} reservation has been approved by the Holy Family Parish.",
+        'Paid' => "Your {$service} reservation payment has been recorded as paid by the Holy Family Parish.",
         'Rejected' => "Your {$service} reservation has been rejected by the Holy Family Parish.",
         'Completed' => "Your {$service} reservation on {$date} has been marked completed.",
         'Pending' => "Your {$service} reservation is pending review.",
@@ -169,7 +170,7 @@ function notifyReservationStatusChange(PDO $db, int $reservationId, string $stat
         return;
     }
 
-    if ($status === 'Approved' || $status === 'Rejected') {
+    if (in_array($status, ['Approved', 'Paid', 'Rejected'], true)) {
         $message = $messages[$status] . "\nDate: {$date}\nTime: {$time}";
         if ($status === 'Rejected' && $remarks !== '') {
             $message .= "\nReason: {$remarks}";
@@ -178,7 +179,7 @@ function notifyReservationStatusChange(PDO $db, int $reservationId, string $stat
         $message = $messages[$status];
     }
 
-    $type = in_array($status, ['Approved', 'Rejected'], true)
+    $type = in_array($status, ['Approved', 'Paid', 'Rejected'], true)
         ? 'reservation_' . strtolower($status)
         : 'reservation';
     $title = "{$service} Reservation {$status}";

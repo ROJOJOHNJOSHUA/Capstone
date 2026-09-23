@@ -120,6 +120,7 @@ export default {
   'users.of': 'of',
   'status.Pending': 'Pending',
   'status.Approved': 'Approved',
+  'status.Paid': 'Paid',
   'status.Rejected': 'Rejected',
   'status.Completed': 'Completed',
   'service.Marriage': 'Marriage',

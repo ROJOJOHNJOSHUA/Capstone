@@ -23,10 +23,10 @@ const STEPS = [
   "Requirements",
   "Review & Submit",
 ];
-const CEMETERY_TYPES = ["Old Cemetery", "New Cemetery", "Old Niche", "Ossuary"];
+const CEMETERY_TYPES = ["Old Cemetery", "New Cemetery Phase 1", "New Cemetery Phase 2", "Old Niche", "Ossuary"];
 const FUNERAL_SERVICES = [
   "Funeral Mass",
-  "Funeral Oration",
+  "Funeral Blessing",
   "Burial / Sepulture",
   "Other",
 ];
@@ -38,13 +38,13 @@ const PERSONAL_FIELDS = [
   ["civil_status", "Civil Status", "select"],
   ["residence", "Residence / Address", "textarea"],
   ["date_of_inquiry", "Date of Inquiry", "date"],
-  ["spouse_maiden_name", "Spouse / Maiden Name", "text"],
+  ["spouse_maiden_name", "Spouse / Maiden Name (Optional)", "text"],
   ["children_count", "No. of Children (Optional)", "number"],
 ];
 const CEMETERY_FIELDS = {
   "Old Cemetery": [
     ["lot_location", "Lot / Location", "text"],
-    ["kalot_pancheon", "Kalot / Pancheon", "text"],
+    ["kalot_pancheon", "open/close niche or new pancheon niche", "text"],
     [
       "existing_niche_info",
       "Existing Niche Information (if applicable)",
@@ -53,11 +53,17 @@ const CEMETERY_FIELDS = {
     ["previous_occupant", "Name of Previous Occupant", "text"],
     ["previous_burial_date", "Date of Previous Burial", "date"],
   ],
-  "New Cemetery": [
+  "New Cemetery Phase 1": [
     ["lot_location", "Lot / Location", "text"],
-    ["kalot_pancheon", "Kalot / Pancheon", "text"],
+    ["kalot_pancheon", "open/close niche or new pancheon niche", "text"],
     ["new_burial_lot", "New Burial Lot", "text"],
-    ["other_cemetery_info", "Other Cemetery Information", "textarea"],
+    ["other_cemetery_info", "Other Cemetery Information (Optional)", "textarea"],
+  ],
+  "New Cemetery Phase 2": [
+    ["lot_location", "Lot / Location", "text"],
+    ["kalot_pancheon", "open/close niche or new pancheon niche", "text"],
+    ["new_burial_lot", "New Burial Lot", "text"],
+    ["other_cemetery_info", "Other Cemetery Information (Optional)", "textarea"],
   ],
   "Old Niche": [
     [
@@ -79,7 +85,8 @@ const CEMETERY_FIELDS = {
 };
 const REQUIRED_CEMETERY_FIELDS = {
   "Old Cemetery": ["lot_location", "kalot_pancheon"],
-  "New Cemetery": ["lot_location", "kalot_pancheon", "new_burial_lot"],
+  "New Cemetery Phase 1": ["lot_location", "kalot_pancheon", "new_burial_lot"],
+  "New Cemetery Phase 2": ["lot_location", "kalot_pancheon", "new_burial_lot"],
   "Old Niche": [
     "previous_niche_occupant",
     "previous_niche_death_date",
@@ -140,6 +147,7 @@ export default function FuneralReservationForm({
   const [slots, setSlots] = useState([]);
   const [requirements, setRequirements] = useState([]);
   const [files, setFiles] = useState({});
+  const [requirementsToBeFollowed, setRequirementsToBeFollowed] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -224,8 +232,10 @@ export default function FuneralReservationForm({
       const missing = activeRequirements.filter(
         (item) => item.required && !files[item.type],
       );
-      if (missing.length)
-        return `Please upload: ${missing.map((item) => item.name).join(", ")}.`;
+      if (missing.length && !requirementsToBeFollowed)
+        return `Please upload: ${missing
+          .map((item) => item.name)
+          .join(", ")}, or check "Requirements to be followed".`;
     }
     return "";
   };
@@ -258,6 +268,7 @@ export default function FuneralReservationForm({
           details.funeral_service === "Other"
             ? details.funeral_service_other
             : details.funeral_service,
+        requirements_to_be_followed: requirementsToBeFollowed,
       };
       const response = await createReservation({
         service_type: "Funeral",
@@ -619,10 +630,31 @@ export default function FuneralReservationForm({
             </div>
         )}
         {step === 5 && (
-          <DocumentUpload
-            requirements={activeRequirements}
-            onFilesChange={setFiles}
-          />
+          <div className="space-y-4">
+            <DocumentUpload
+              requirements={activeRequirements}
+              onFilesChange={setFiles}
+            />
+            <label className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={requirementsToBeFollowed}
+                onChange={(event) =>
+                  setRequirementsToBeFollowed(event.target.checked)
+                }
+                className="mt-1 h-4 w-4 rounded border-slate-300 text-[#0f2337] focus:ring-[#0f2337]"
+              />
+              <span>
+                <span className="font-medium text-[#0f2337]">
+                  Requirements to be followed
+                </span>
+                <span className="mt-1 block text-xs text-slate-600">
+                  Check this box if you understand and agree to follow the funeral
+                  requirements and submit without uploading the documents now.
+                </span>
+              </span>
+            </label>
+          </div>
         )}
         {step === 6 && (
           <div className="space-y-4 text-sm text-slate-700">

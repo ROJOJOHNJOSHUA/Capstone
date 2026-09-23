@@ -12,17 +12,6 @@ const QUICK_ACTIONS = [
   { label: 'Notifications', detail: 'Get important parish updates.', to: '/notifications', icon: 'bell' },
 ];
 
-function getPhilippineTime() {
-  const parts = new Intl.DateTimeFormat('en-PH', {
-    timeZone: 'Asia/Manila',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  }).formatToParts(new Date());
-  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
-  return { time: `${values.hour}:${values.minute}`, meridiem: values.dayPeriod?.toUpperCase() || '' };
-}
-
 function QuickActionIcon({ type }) {
   const paths = {
     calendar: <><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M8 3v4M16 3v4M4 9h16M8 13h.01M12 13h.01M16 13h.01M8 16h.01M12 16h.01" /></>,
@@ -38,29 +27,15 @@ export default function Home() {
   const location = useLocation();
   const navigate = useNavigate();
   const [showRegisteredNotice, setShowRegisteredNotice] = useState(Boolean(location.state?.registered));
-  const [philippineTime, setPhilippineTime] = useState(getPhilippineTime);
   const [loginOpen, setLoginOpen] = useState(false);
 
   useEffect(() => {
     if (location.state?.registered) navigate('/', { replace: true, state: {} });
   }, [location.state, navigate]);
 
-  useEffect(() => {
-    const clock = window.setInterval(() => setPhilippineTime(getPhilippineTime()), 1000);
-    return () => window.clearInterval(clock);
-  }, []);
-
   return (
     <div className="home-page mx-auto min-h-screen max-w-[1500px] overflow-hidden bg-[#faf8f1] text-[#4e555a] shadow-[0_0_40px_rgba(83,65,34,0.08)]">
       <Navbar />
-      <div className="fixed right-0 top-16 z-40 flex h-20 w-32 items-center gap-2 rounded-bl-2xl border-b border-l border-white/80 bg-[#fffdf8]/95 px-3 text-left shadow-[0_10px_24px_rgba(83,65,34,0.14)] backdrop-blur-sm sm:top-20 sm:h-28 sm:w-40 sm:gap-3 sm:px-5">
-        <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#d7b57a] bg-[#faf5e9] text-[#b18a45] sm:h-11 sm:w-11" aria-hidden="true">
-          <span className="absolute left-1/2 top-2 h-3 w-px origin-bottom -translate-x-1/2 rotate-[25deg] bg-[#273746]" />
-          <span className="absolute left-1/2 top-2 h-4 w-px origin-bottom -translate-x-1/2 -rotate-[55deg] bg-[#b18a45]" />
-          <span className="h-1 w-1 rounded-full bg-[#273746]" />
-        </span>
-        <span className="min-w-0"><span className="flex items-baseline gap-1 font-display text-xl leading-none tracking-tight text-[#273746]"><span>{philippineTime.time}</span><span className="text-[9px] font-semibold tracking-[0.16em] text-[#58616a]">{philippineTime.meridiem}</span></span><span className="mt-2 block text-[7px] uppercase leading-tight tracking-[0.12em] text-[#8a806f]">Philippine Standard Time</span></span>
-      </div>
       {showRegisteredNotice && <div className="relative z-10 border-b border-emerald-200 bg-emerald-50 px-4 py-3 text-center"><p className="text-sm font-semibold text-emerald-800">Registration Successful</p><p className="text-sm text-emerald-700">Your account has been created successfully. Please log in to continue.</p><button type="button" aria-label="Dismiss" className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-600" onClick={() => setShowRegisteredNotice(false)}>✕</button></div>}
       <main>
         <section className="hero-shell relative min-h-[390px] overflow-hidden border-b border-[#eadfce] sm:min-h-[440px]">

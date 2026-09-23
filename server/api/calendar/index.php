@@ -22,7 +22,10 @@ try {
                 r.requirements, r.service_details, u.fullname, u.email, u.phone
          FROM reservations r
          INNER JOIN users u ON u.id = r.user_id
-                 WHERE r.status = 'Approved'
+                 WHERE (
+                     r.status = 'Paid'
+                     OR (r.service_type = 'Mass Intention' AND r.status = 'Approved')
+                 )
                      AND (r.reservation_date > ? OR (r.reservation_date = ? AND r.reservation_time >= ?))
          ORDER BY r.reservation_date, r.reservation_time, r.id"
     );

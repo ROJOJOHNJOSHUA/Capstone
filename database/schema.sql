@@ -52,7 +52,7 @@ INSERT IGNORE INTO users (fullname, email, phone, address, password, role) VALUE
 
 -- ---------------------------------------------------------------------------
 -- Reservations
--- Statuses: Pending, Approved, Rejected, Completed, Cancelled
+-- Statuses: Pending, Under Review, Approved, Paid, Rejected, Completed, Cancelled
 -- Service types: Marriage, Funeral, Baptism, Mass Intention, Private Mass
 -- ---------------------------------------------------------------------------
 
@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS reservations (
   prayer_intention TEXT NULL,
   payment_amount DECIMAL(10,2) NULL,
   payment_method VARCHAR(50) NULL,
-  status ENUM('Pending', 'Under Review', 'Approved', 'Rejected', 'Completed', 'Cancelled') NOT NULL DEFAULT 'Pending',
+  status ENUM('Pending', 'Under Review', 'Approved', 'Paid', 'Rejected', 'Completed', 'Cancelled') NOT NULL DEFAULT 'Pending',
   remarks TEXT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,

@@ -99,14 +99,16 @@ export const SERVICE_SCHEDULE = {
 };
 
 export const SERVICE_REQUIREMENTS = {
-  Marriage: 'Marriage License, Baptismal Certificate, Confirmation Certificate, Pre-Cana Seminar Certificate',
-  Funeral: 'Death Certificate, Baptismal Certificate of deceased, Family contact information',
-  Baptism: 'Birth Certificate, Parents Marriage Certificate, Godparents Confirmation Certificates',
+  Marriage: 'Marriage License, CENOMAR, Baptismal Certificate, Confirmation Certificate, Marriage Certificate of Sponsor, Pre-Cana Seminar Certificate',
+  Funeral: 'Death Certificate, Burial Permit, Endorsement Form, and any cemetery/niche form required by the service choice',
+  Baptism: 'Birth Certificate, Baptismal Certificate of Sponsor, and Permit of Home Church (optional only if not a resident of Putiao, Pilar)',
   'Mass Intention': 'Payment receipt / proof of payment',
-  'Private Mass': 'Purpose of Mass, Expected attendees, Preferred priest (if any)',
+  'Private Mass': 'Valid ID and service purpose / location details',
+  Appointments: 'Bring your concern or request, and a valid ID if needed',
 };
 
-export const STATUSES = ['Pending', 'Under Review', 'Approved', 'Rejected', 'Completed', 'Cancelled'];
+export const STATUSES = ['Pending', 'Under Review', 'Approved', 'Paid', 'Rejected', 'Completed', 'Cancelled'];
+export const APPOINTMENT_STATUSES = ['Pending', 'Under Review', 'Approved', 'Rejected', 'Completed', 'Cancelled'];
 
 export const PARISH_LOCATION = {
   name: 'Holy Family Parish',
@@ -117,6 +119,7 @@ export const STATUS_BADGE = {
   Pending: 'badge-pending',
   'Under Review': 'badge-pending',
   Approved: 'badge-approved',
+  Paid: 'badge-approved',
   Rejected: 'badge-rejected',
   Completed: 'badge-completed',
   Cancelled: 'badge-rejected',

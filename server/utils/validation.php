@@ -78,7 +78,7 @@ function allowedServiceTypes(): array
 
 function allowedStatuses(): array
 {
-    return ['Pending', 'Under Review', 'Approved', 'Rejected', 'Completed', 'Cancelled'];
+    return ['Pending', 'Under Review', 'Approved', 'Paid', 'Rejected', 'Completed', 'Cancelled'];
 }
 
 function validateRegistration(array $data): array

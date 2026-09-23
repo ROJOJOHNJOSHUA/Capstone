@@ -440,7 +440,7 @@ export default function Appointment() {
 
   const totalAppointments = appointments.length;
   const pendingAppointments = appointments.filter((item) => ['Pending', 'Submitted', 'In Review'].includes(item.status)).length;
-  const approvedAppointments = appointments.filter((item) => ['Approved', 'Confirmed'].includes(item.status)).length;
+  const approvedAppointments = appointments.filter((item) => ['Approved', 'Paid'].includes(item.status)).length;
 
   return (
     <DashboardLayout>

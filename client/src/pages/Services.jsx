@@ -1,18 +1,32 @@
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import Footer from '../components/footer/Footer';
+import LoginModal from '../components/forms/LoginModal';
 import Navbar from '../components/navbar/Navbar';
-import { CORE_FEATURE_CARDS, SERVICE_CARDS } from '../utils/constants';
+import { CORE_FEATURE_CARDS, SERVICE_CARDS, SERVICE_REQUIREMENTS } from '../utils/constants';
 
 const APPOINTMENT_CARD = {
   name: 'Appointments',
   description: 'Meet with the parish staff for your concerns.',
   image: CORE_FEATURE_CARDS[2].image,
+  requirements: SERVICE_REQUIREMENTS.Appointments,
+};
+
+const getRequirementItems = (service) => {
+  const raw = service.requirements || SERVICE_REQUIREMENTS[service.name] || '';
+  return raw
+    .split(/[;,]/)
+    .map((item) => item.replace(/\s*:\s*$/, '').trim())
+    .filter(Boolean);
 };
 
 export default function Services() {
-  const services = [...SERVICE_CARDS, APPOINTMENT_CARD];
+  const services = [...SERVICE_CARDS, APPOINTMENT_CARD].map((service) => ({
+    ...service,
+    requirements: service.requirements || SERVICE_REQUIREMENTS[service.name] || '',
+  }));
   const [flippedServices, setFlippedServices] = useState({});
+  const [loginOpen, setLoginOpen] = useState(false);
 
   const toggleService = (serviceName) => {
     setFlippedServices((current) => ({ ...current, [serviceName]: !current[serviceName] }));
@@ -45,20 +59,32 @@ export default function Services() {
                 >
                   <span className={`relative block h-full w-full transition-transform duration-500 [transform-style:preserve-3d] ${flippedServices[service.name] ? '[transform:rotateY(180deg)]' : ''}`}>
                     <span className="absolute inset-0 block bg-[#fcfbf8] [backface-visibility:hidden]"><img src={service.image} alt={service.name} className="h-[78%] w-full object-cover transition duration-500 group-hover/flip:scale-105" loading="lazy" /><span className="flex h-[22%] items-center px-3 font-display text-base leading-tight text-[#273746] sm:px-5 sm:text-lg">{service.name}</span></span>
-                    <span className="absolute inset-0 flex [transform:rotateY(180deg)] [backface-visibility:hidden] flex-col justify-center bg-[#f5ede0] px-3 text-left sm:px-5"><span className="font-display text-base leading-tight text-[#273746] sm:text-lg">{service.name}</span><span className="mt-2 text-[11px] leading-relaxed text-[#7a7d7f] sm:mt-3 sm:text-xs">{service.description}</span></span>
+                    <span className="absolute inset-0 flex [transform:rotateY(180deg)] [backface-visibility:hidden] flex-col justify-start bg-[#f5ede0] px-3 py-3 text-left sm:px-5 sm:py-4"><span className="font-display text-base leading-tight text-[#273746] sm:text-lg">{service.name}</span><span className="mt-2 text-[11px] leading-relaxed text-[#7a7d7f] sm:text-xs">{service.description}</span><span className="mt-3 border-t border-[#d9c9a3] pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#b18a45]">Requirements</span><ul className="mt-2 space-y-1 text-[10px] leading-relaxed text-[#5f6368] sm:text-[11px]">
+                      {getRequirementItems(service).map((item) => (
+                        <li key={item} className="flex items-start gap-1.5">
+                          <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#b18a45]" aria-hidden="true" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul></span>
                   </span>
                 </div>
               </article>
             ))}
           </div>
           <div className="mt-8 flex justify-end">
-            <Link to="/login" className="btn-gold inline-flex items-center gap-2 rounded-lg px-6 py-3 text-sm">
+            <button
+              type="button"
+              onClick={() => setLoginOpen(true)}
+              className="btn-gold inline-flex items-center gap-2 rounded-lg px-6 py-3 text-sm"
+            >
               Make Reservation <span aria-hidden>→</span>
-            </Link>
+            </button>
           </div>
         </section>
       </main>
       <Footer />
+      <LoginModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} from="/reservations" />
     </div>
   );
 }

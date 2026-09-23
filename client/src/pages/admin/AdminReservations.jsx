@@ -369,12 +369,17 @@ export default function AdminReservations() {
     setDocumentSummary(null);
   };
 
+  const funeralRequirementsWaived = modal && modal.service_type === 'Funeral' && Boolean(parseServiceDetails(modal.service_details).requirements_to_be_followed);
+  const canApproveReservation = !modal || !documentSummary || documentSummary.complete || funeralRequirementsWaived;
+
   const stats = {
     total: items.length,
     pending: items.filter((item) => ['Pending', 'Under Review'].includes(item.status)).length,
-    approved: items.filter((item) => item.status === 'Approved').length,
+    approved: items.filter((item) => ['Approved', 'Paid'].includes(item.status)).length,
     rejected: items.filter((item) => item.status === 'Rejected').length,
   };
+
+  const canConfirmPayment = modal && modal.service_type !== 'Mass Intention' && ['Approved', 'Paid'].includes(modal.status);
 
   return (
     <DashboardLayout>
@@ -461,7 +466,16 @@ export default function AdminReservations() {
                             Review
                           </button>
                         )}
-                        {r.status === 'Approved' && (
+                        {r.service_type !== 'Mass Intention' && r.status === 'Approved' && (
+                          <button
+                            type="button"
+                            className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-600 hover:text-white"
+                            onClick={() => updateReservation({ id: r.id, status: 'Paid' }).then(load)}
+                          >
+                            Mark as Paid
+                          </button>
+                        )}
+                        {((r.service_type === 'Mass Intention' && r.status === 'Approved') || (['Approved', 'Paid'].includes(r.status) && r.service_type !== 'Mass Intention')) && (
                           <button
                             type="button"
                             className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-600 hover:text-white"
@@ -734,9 +748,15 @@ export default function AdminReservations() {
               )}
             </div>
 
-            {documentSummary && !documentSummary.complete && ['Pending', 'Under Review'].includes(modal.status) && (
+            {documentSummary && !documentSummary.complete && !funeralRequirementsWaived && ['Pending', 'Under Review'].includes(modal.status) && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
                 ⚠️ Reservation cannot be approved until all required documents are verified.
+              </div>
+            )}
+
+            {funeralRequirementsWaived && ['Pending', 'Under Review'].includes(modal.status) && (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+                ✅ Funeral requirements were waived by the parishioner via the “Requirements to be followed” checkbox.
               </div>
             )}
 
@@ -755,10 +775,20 @@ export default function AdminReservations() {
                 type="button"
                 className="btn-primary flex-1"
                 onClick={() => handleAction('Approved')}
-                disabled={actionLoading || loadingDocs || !documentSummary || !documentSummary.complete}
+                disabled={actionLoading || loadingDocs || !canApproveReservation}
               >
                 {actionLoading ? 'Processing...' : 'Approve'}
               </button>
+              {canConfirmPayment && (
+                <button
+                  type="button"
+                  className="btn-primary flex-1"
+                  onClick={() => handleAction('Paid')}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? 'Processing...' : 'Mark as Paid'}
+                </button>
+              )}
               <button
                 type="button"
                 className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"

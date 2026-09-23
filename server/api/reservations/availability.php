@@ -63,9 +63,10 @@ if ($month !== '') {
             $allowed = filterPastAppointmentSlots($day, $allowed);
         }
         if ($serviceType === 'Mass Intention') {
+            $capacity = 100;
             $fullCount = 0;
             foreach ($allowed as $slot) {
-                if (($bookedByDate[$day][$slot] ?? 0) >= 15) $fullCount++;
+                if (($bookedByDate[$day][$slot] ?? 0) >= $capacity) $fullCount++;
             }
             $dates[$day] = [
                 'status' => $allowed === [] ? 'unavailable' : ($fullCount === count($allowed) ? 'full' : 'available'),
@@ -130,7 +131,7 @@ $stmt->execute($params);
 $counts = [];
 foreach ($stmt->fetchAll() as $row) $counts[(string) $row['reservation_time']] = (int) $row['reservation_count'];
 
-$capacity = $serviceType === 'Mass Intention' ? 15 : ($serviceType === 'Baptism' ? 20 : 1);
+$capacity = $serviceType === 'Mass Intention' ? 100 : ($serviceType === 'Baptism' ? 20 : 1);
 $available = array_values(array_filter($allowedSlots, fn ($time) => ($counts[$time] ?? 0) < $capacity));
 $slots = array_map(function ($time) use ($counts, $capacity) {
     $count = $counts[$time] ?? 0;

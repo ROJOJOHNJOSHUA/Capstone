@@ -100,8 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
         $validSexes = ['Male', 'Female'];
         $validCivilStatuses = ['Single', 'Married', 'Widowed', 'Separated', 'Divorced', 'Other'];
-        $validCemeteries = ['Old Cemetery', 'New Cemetery', 'Old Niche', 'Ossuary'];
-        $validFuneralServices = ['Funeral Mass', 'Funeral Oration', 'Burial / Sepulture', 'Other'];
+        $validCemeteries = ['Old Cemetery', 'New Cemetery', 'New Cemetery Phase 1', 'New Cemetery Phase 2', 'Old Niche', 'Ossuary'];
+        $validFuneralServices = ['Funeral Mass', 'Funeral Oration', 'Funeral Blessing', 'Burial / Sepulture', 'Other'];
         if (!in_array($serviceDetails['sex'] ?? '', $validSexes, true)) $funeralErrors['sex'] = 'Please choose Male or Female.';
         if (!in_array($serviceDetails['civil_status'] ?? '', $validCivilStatuses, true)) $funeralErrors['civil_status'] = 'Please choose a valid civil status.';
         if (!in_array($serviceDetails['cemetery_type'] ?? '', $validCemeteries, true)) $funeralErrors['cemetery_type'] = 'Please choose a valid cemetery type.';
@@ -116,10 +116,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $requiredByCemetery = [
             'Old Cemetery' => ['lot_location', 'kalot_pancheon'],
             'New Cemetery' => ['lot_location', 'kalot_pancheon', 'new_burial_lot'],
+            'New Cemetery Phase 1' => ['lot_location', 'kalot_pancheon', 'new_burial_lot'],
+            'New Cemetery Phase 2' => ['lot_location', 'kalot_pancheon', 'new_burial_lot'],
             'Old Niche' => ['previous_niche_occupant', 'previous_niche_death_date', 'book', 'page'],
             'Ossuary' => ['ossuary_chamber', 'rental', 'maintenance_fee'],
         ];
-        foreach ($requiredByCemetery[$serviceDetails['cemetery_type'] ?? ''] ?? [] as $field) {
+        $cemeteryKey = $serviceDetails['cemetery_type'] ?? '';
+        foreach (($requiredByCemetery[$cemeteryKey] ?? []) as $field) {
             if (trim((string) ($serviceDetails[$field] ?? '')) === '') $funeralErrors[$field] = ucfirst(str_replace('_', ' ', $field)) . ' is required.';
         }
         if (!empty($funeralErrors)) errorResponse('Funeral reservation validation failed.', 422, $funeralErrors);
@@ -201,8 +204,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                    AND status IN ('Under Review', 'Approved')"
             );
             $countStmt->execute([$date, $time]);
-            if ((int) $countStmt->fetchColumn() >= 15) {
-                throw new DomainException('This Mass schedule is already full (15/15). Please select another available schedule.');
+            if ((int) $countStmt->fetchColumn() >= 100) {
+                throw new DomainException('This Mass schedule is already full (100/100). Please select another available schedule.');
             }
         } else {
             $check = $db->prepare(
@@ -231,28 +234,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
         $newId = (int) $db->lastInsertId();
 
-        if ($isMassIntention || $isPrivateMass) {
-            $requiredFileType = $isMassIntention ? 'payment_receipt' : 'valid_id';
-            $validation = validateUploadedFile($_FILES[$requiredFileType]);
-            if (!$validation['valid']) throw new DomainException($validation['error']);
+        $uploadedDocumentFields = [];
+        foreach ($_FILES as $fieldName => $uploadedFile) {
+            if (!is_array($uploadedFile) || !isset($uploadedFile['tmp_name']) || !is_uploaded_file($uploadedFile['tmp_name'])) {
+                continue;
+            }
+
+            $documentType = (string) $fieldName;
+            if (!documentTypeExists($data['service_type'], $documentType)) {
+                continue;
+            }
+
+            $uploadedDocumentFields[] = $documentType;
+            $validation = validateUploadedFile($uploadedFile);
+            if (!$validation['valid']) {
+                throw new DomainException($validation['error']);
+            }
+
             $baseUploadDir = __DIR__ . '/../../uploads';
             $folderResult = createReservationFolder($newId, $baseUploadDir);
-            if (!$folderResult['success']) throw new RuntimeException($folderResult['error']);
-            $originalFilename = basename($_FILES[$requiredFileType]['name']);
-            $storedFilename = generateStoredFilename($originalFilename, $requiredFileType);
+            if (!$folderResult['success']) {
+                throw new RuntimeException($folderResult['error']);
+            }
+
+            $originalFilename = basename($uploadedFile['name']);
+            $storedFilename = generateStoredFilename($originalFilename, $documentType);
             $filePath = getDocumentFilePath($newId, $storedFilename);
             $destination = $baseUploadDir . '/' . $filePath;
-            $moveResult = moveUploadedFileSecurely($_FILES[$requiredFileType], $destination);
-            if (!$moveResult['success']) throw new RuntimeException($moveResult['error']);
+            $moveResult = moveUploadedFileSecurely($uploadedFile, $destination);
+            if (!$moveResult['success']) {
+                throw new RuntimeException($moveResult['error']);
+            }
+
             $documentStmt = $db->prepare(
                 'INSERT INTO reservation_documents
                  (reservation_id, document_name, document_type, original_filename, stored_filename, file_path, mime_type, file_size, status)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
             );
             $documentStmt->execute([
-                $newId, $isMassIntention ? 'Payment Receipt / Proof of Payment' : 'Valid ID', $requiredFileType,
-                $originalFilename, $storedFilename, $filePath, $validation['mime_type'],
-                (int) $_FILES[$requiredFileType]['size'], 'Pending',
+                $newId,
+                getDocumentTypeName($data['service_type'], $documentType),
+                $documentType,
+                $originalFilename,
+                $storedFilename,
+                $filePath,
+                $validation['mime_type'],
+                (int) $uploadedFile['size'],
+                'Pending',
             ]);
         }
         $db->commit();
@@ -315,7 +343,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
         errorResponse('A rejection reason is required.', 422, ['remarks' => 'Please provide a rejection reason.']);
     }
 
-    $stmt = $db->prepare('SELECT id, service_type, status, reservation_date, reservation_time, intention_name FROM reservations WHERE id = ?');
+    $stmt = $db->prepare('SELECT id, service_type, status, reservation_date, reservation_time, intention_name, service_details FROM reservations WHERE id = ?');
     $stmt->execute([$id]);
     $reservation = $stmt->fetch(PDO::FETCH_ASSOC);
     
@@ -326,9 +354,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     $previousStatus = (string) $reservation['status'];
     $statusChanged = $status !== $previousStatus;
 
-    // Prevent approval if required documents are not verified
+    // Prevent approval if required documents are not verified, unless the
+    // parishioner explicitly checked the funeral "requirements to be followed"
+    // waiver during submission.
     if ($status === 'Approved') {
-        if (!areRequiredDocumentsVerified($db, $id, $reservation['service_type'])) {
+        $serviceDetails = json_decode((string) ($reservation['service_details'] ?? ''), true);
+        $requirementsWaived = is_array($serviceDetails) && filter_var($serviceDetails['requirements_to_be_followed'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        if (!$requirementsWaived && !areRequiredDocumentsVerified($db, $id, $reservation['service_type'])) {
             $summary = getReservationDocumentSummary($db, $id, $reservation['service_type']);
             errorResponse(
                 'All required documents must be verified before approving this reservation. ' .
@@ -368,6 +401,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
                 $massIntentionLabel = (string) ($reservation['intention_name'] ?: 'Mass Intention');
                 $smsMessages = [
                     'Approved' => "Holy Family Parish: Your Mass Intention reservation has been approved for {$resDate} at {$resTime}. Reservation ID: {$id}. Thank you.",
+                    'Completed' => "Holy Family Parish: Your Mass Intention reservation for {$resDate} at {$resTime} has been marked completed. Reservation ID: {$id}.",
                     'Rejected' => "Holy Family Parish: Your Mass Intention reservation has been rejected." . ($remarks !== '' ? " Reason: {$remarks}." : '') . " Reservation ID: {$id}.",
                 ];
             } else {

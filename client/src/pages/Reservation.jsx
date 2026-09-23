@@ -387,8 +387,26 @@ export default function Reservation() {
     ['address', 'Address', 'text'],
   ];
   const marriageCoupleFields = getRequiredServiceDetails();
+  const getMarriageAgeValidationErrors = () => {
+    const errors = {};
+    const brideAge = Number(form.serviceDetails?.bride_age ?? '');
+    const groomAge = Number(form.serviceDetails?.groom_age ?? '');
+
+    if (!Number.isInteger(brideAge) || brideAge < 18 || brideAge > 120) {
+      errors.bride_age = 'Bride age must be between 18 and 120.';
+    }
+
+    if (!Number.isInteger(groomAge) || groomAge < 18 || groomAge > 120) {
+      errors.groom_age = 'Groom age must be between 18 and 120.';
+    }
+
+    return errors;
+  };
   const canAdvanceMarriagePersonal = () => marriagePersonalFields.every(([key]) => String(form.personalDetails?.[key] || '').trim());
-  const canAdvanceMarriageCouple = () => marriageCoupleFields.every((field) => String(form.serviceDetails[field.key] || '').trim());
+  const canAdvanceMarriageCouple = () => {
+    const ageErrors = getMarriageAgeValidationErrors();
+    return marriageCoupleFields.every((field) => String(form.serviceDetails[field.key] || '').trim()) && Object.keys(ageErrors).length === 0;
+  };
 
   const canAdvanceFromService = () => Boolean(form.service_type);
   const canAdvanceFromDetails = (stepToValidate = currentStep) => {
@@ -416,9 +434,12 @@ export default function Reservation() {
       setError('Please complete all personal information fields before continuing.');
       return;
     }
-    if (isMarriageFlow && currentStep === 2 && !canAdvanceMarriageCouple()) {
-      setError('Please complete all bride and groom information fields before continuing.');
-      return;
+    if (isMarriageFlow && currentStep === 2) {
+      const ageErrors = getMarriageAgeValidationErrors();
+      if (!canAdvanceMarriageCouple()) {
+        setError(Object.values(ageErrors)[0] || 'Please complete all bride and groom information fields before continuing.');
+        return;
+      }
     }
     if (isMarriageFlow && currentStep === 3 && !canAdvanceFromSchedule()) {
       setError('Please choose an available date and time slot.');
@@ -471,11 +492,14 @@ export default function Reservation() {
     let reservationDate = form.reservation_date;
     let reservationTime = form.reservation_time;
     const missingStepDocuments = missingRequiredDocuments();
-    if (isMarriageFlow && (!canAdvanceMarriagePersonal() || !canAdvanceMarriageCouple() || !canAdvanceFromSchedule() || missingStepDocuments.length > 0)) {
-      setError(missingStepDocuments.length > 0
-        ? `Please upload all required documents: ${missingStepDocuments.map((d) => d.name).join(', ')}`
-        : 'Please complete all required Marriage information before submitting.');
-      return;
+    if (isMarriageFlow) {
+      const ageErrors = getMarriageAgeValidationErrors();
+      if (!canAdvanceMarriagePersonal() || !canAdvanceMarriageCouple() || !canAdvanceFromSchedule() || missingStepDocuments.length > 0) {
+        setError(missingStepDocuments.length > 0
+          ? `Please upload all required documents: ${missingStepDocuments.map((d) => d.name).join(', ')}`
+          : Object.values(ageErrors)[0] || 'Please complete all required Marriage information before submitting.');
+        return;
+      }
     }
     if (!isMarriageFlow && (!canAdvanceFromDetails(1) || (isBaptismFlow && !canAdvanceFromDetails(2)) || !canAdvanceFromSchedule()) || missingStepDocuments.length > 0) {
       setError(missingStepDocuments.length > 0
@@ -510,22 +534,35 @@ export default function Reservation() {
         serviceDetails: submittedDetails,
         requirements: mergedRequirements,
       };
-      if (form.service_type === 'Mass Intention') {
-        const receipt = uploadedFiles.payment_receipt;
+      const uploadedDocEntries = Object.entries(uploadedFiles);
+      const hasInlineUploadFiles = uploadedDocEntries.length > 0;
+
+      if (form.service_type === 'Mass Intention' || hasInlineUploadFiles) {
         payload = new FormData();
         payload.append('service_type', form.service_type);
         payload.append('reservation_date', form.reservation_date);
         payload.append('reservation_time', form.reservation_time);
         payload.append('requirements', mergedRequirements);
-        payload.append('intention_name', form.serviceDetails.intention_name);
-        payload.append('prayer_intention', form.serviceDetails.prayer_intention);
-        payload.append('payment_receipt', receipt);
+        payload.append('serviceDetails', JSON.stringify(submittedDetails));
+
+        if (form.service_type === 'Mass Intention') {
+          payload.append('intention_name', form.serviceDetails.intention_name);
+          payload.append('prayer_intention', form.serviceDetails.prayer_intention);
+          payload.append('payment_receipt', uploadedFiles.payment_receipt);
+        }
+
+        if (hasInlineUploadFiles) {
+          uploadedDocEntries.forEach(([docType, file]) => {
+            if (!file) return;
+            payload.append(docType, file, file.name);
+          });
+        }
       }
 
       const response = await createReservation(payload);
       const reservationId = response.data.id;
-      
-      const uploadPromises = form.service_type === 'Mass Intention' ? [] : Object.entries(uploadedFiles).map(([docType, file]) => {
+
+      const uploadPromises = (form.service_type === 'Mass Intention' || hasInlineUploadFiles) ? [] : Object.entries(uploadedFiles).map(([docType, file]) => {
         const formData = new FormData();
         formData.append('reservation_id', reservationId);
         formData.append('document_type', docType);
@@ -628,7 +665,7 @@ export default function Reservation() {
 
   const totalReservations = reservations.length;
   const pendingCount = reservations.filter((item) => ['Pending', 'Submitted', 'In Review', 'Under Review'].includes(item.status)).length;
-  const approvedCount = reservations.filter((item) => ['Approved', 'Confirmed'].includes(item.status)).length;
+  const approvedCount = reservations.filter((item) => ['Approved', 'Paid'].includes(item.status)).length;
 
   return (
     <DashboardLayout>
@@ -753,17 +790,35 @@ export default function Reservation() {
                       </label>
                     ))}
                   </div>
-                  <br></br>
-                  <div>
+                  <div className="mb-4 grid gap-3 md:grid-cols-2">
+                    <div className="flex min-h-[118px] flex-col justify-start rounded-[12px] bg-[#1a99f3] p-0 text-white shadow-[0_8px_16px_rgba(26,153,243,0.14)]">
+                      <div className="px-3 pt-2 text-[22px] font-black leading-[0.9] tracking-[-0.06em] text-white mt-2">GCash</div>
 
-                      <p className="font-semibold text-[#0f2337]">Gcash account: 09673941188 J*** J***** R***</p><br></br>
-                      <p className="font-semibold text-[#0f2337]">Landbank account: 09673941188 J*** J***** R***</p>
+                      <div className="px-3 pb-2 pt-1">
+                        <div className="text-[8px] font-semibold uppercase tracking-[0.14em] text-white/75">Account Name</div>
+                        <div className="text-[14px] font-bold leading-tight text-white">J*** J***** R***</div>
+
+                        <div className="mt-1 text-[8px] font-semibold uppercase tracking-[0.14em] text-white/75">Account Number</div>
+                        <div className="text-[14px] font-bold leading-tight tracking-[0.08em] text-white">09673941188</div>
+                      </div>
+                    </div>
+
+                    <div className="flex min-h-[118px] flex-col justify-start rounded-[12px] bg-[#8fe3a4] p-0 text-slate-900 shadow-[0_8px_16px_rgba(143,227,164,0.14)]">
+                      <div className="px-3 pt-2 text-[22px] font-black leading-[0.9] tracking-[-0.06em] text-slate-900 mt-2">LandBank</div>
+
+                      <div className="px-3 pb-2 pt-1">
+                        <div className="text-[8px] font-semibold uppercase tracking-[0.14em] text-slate-800/75">Account Name</div>
+                        <div className="text-[14px] font-bold leading-tight text-slate-900">J*** J***** R***</div>
+
+                        <div className="mt-1 text-[8px] font-semibold uppercase tracking-[0.14em] text-slate-800/75">Account Number</div>
+                        <div className="text-[14px] font-bold leading-tight tracking-[0.08em] text-slate-900">09673941188</div>
+                      </div>
+                    </div>
                   </div>
                   {form.service_type === 'Mass Intention' && (
-                    <div className="mt-5 rounded-2xl border border-[#f2e4bb] bg-[#fffaf0] p-4 text-sm text-slate-700">
-                      <p className="font-semibold text-[#0f2337]">Mass Intention Fee: ₱100.00 per individual Mass Intention</p>
-                      <p className="mt-2">Please send ₱100.00 using the parish payment account and upload your receipt in Step 4.</p>
-                      <p className="mt-2 text-xs text-slate-600">GCash or bank payment details have not been configured. Please contact the parish office for the current account information.</p>
+                    <div className="rounded-[18px] border border-[#e7d7ac] bg-[#f5efdf] p-4 text-sm text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
+                      <p className="font-semibold text-[#0f2337]">Mass Intention Fee: ₱100.00 per Mass Intention</p>
+                      <p className="mt-2 leading-relaxed">Please send the payment using the parish payment account and upload your receipt as proof.</p>
                     </div>
                   )}
                 </div>
@@ -804,7 +859,25 @@ export default function Reservation() {
                             {field.key.includes('address') ? (
                               <textarea className="input-field min-h-[90px]" value={form.serviceDetails[field.key] || ''} onChange={(event) => setForm((prev) => ({ ...prev, serviceDetails: { ...prev.serviceDetails, [field.key]: event.target.value } }))} required />
                             ) : (
-                              <input type={field.key.includes('age') ? 'number' : field.key.includes('contact') ? 'tel' : 'text'} min={field.key.includes('age') ? 18 : undefined} className="input-field" value={form.serviceDetails[field.key] || ''} onChange={(event) => setForm((prev) => ({ ...prev, serviceDetails: { ...prev.serviceDetails, [field.key]: event.target.value } }))} required />
+                              <input
+                                type={field.key.includes('age') ? 'number' : field.key.includes('contact') ? 'tel' : 'text'}
+                                min={field.key.includes('age') ? 18 : undefined}
+                                max={field.key.includes('age') ? 120 : undefined}
+                                className="input-field"
+                                value={form.serviceDetails[field.key] || ''}
+                                onChange={(event) => {
+                                  const value = event.target.value;
+                                  if (field.key.includes('age') && value !== '') {
+                                    const numericValue = Number(value);
+                                    if (numericValue < 18) {
+                                      setForm((prev) => ({ ...prev, serviceDetails: { ...prev.serviceDetails, [field.key]: '18' } }));
+                                      return;
+                                    }
+                                  }
+                                  setForm((prev) => ({ ...prev, serviceDetails: { ...prev.serviceDetails, [field.key]: value } }));
+                                }}
+                                required
+                              />
                             )}
                           </label>
                         ))}
@@ -1019,13 +1092,10 @@ export default function Reservation() {
                                   <span className="text-base">{formatSlotTime(slot.time)}</span>
                                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${isAvailable ? 'bg-emerald-200 text-emerald-900' : 'bg-red-200 text-red-900'}`}>
                                     {form.service_type === 'Mass Intention'
-                                      ? `${slot.reservation_count || 0}/15${isAvailable ? '' : ' — FULL'}`
+                                      ? (isAvailable ? 'Available' : 'Full')
                                       : (isAvailable ? 'Available' : 'Full')}
                                   </span>
                                 </div>
-                                {form.service_type === 'Mass Intention' && isAvailable && (
-                                  <div className="mt-1 text-xs text-emerald-700">{slot.remaining} slot{slot.remaining === 1 ? '' : 's'} remaining</div>
-                                )}
                               </button>
                             );
                           })}
