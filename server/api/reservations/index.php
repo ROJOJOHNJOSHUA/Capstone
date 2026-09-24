@@ -413,6 +413,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
             } else {
                 $smsMessages = [
                     'Approved' => "Holy Family Parish: Your {$serviceLabel} reservation has been approved for {$resDate} at {$resTime}. Reservation ID: {$id}. Please visit the Parish Office to process your payments. Kindly bring sufficient cash for any applicable fees. Thank you.",
+                    'Paid' => "Holy Family Parish: Your payment has been confirmed. Your {$serviceLabel} reservation is confirmed for {$resDate} at {$resTime}. Please arrive at least 15 minutes before your scheduled time. Thank you!",
                     'Rejected' => "Holy Family Parish: Your {$serviceLabel} reservation has been rejected." . ($remarks !== '' ? " Reason: {$remarks}." : '') . " Reservation ID: {$id}.",
                 ];
             }
