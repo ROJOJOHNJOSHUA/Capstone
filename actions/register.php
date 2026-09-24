@@ -24,8 +24,8 @@ if ($fullname === '' || $email === '' || $phone === '' || $password === '') {
     redirect(appUrl('auth/register.php'));
 }
 
-if (!validateEmail($email)) {
-    setFlash('danger', 'Invalid email address.');
+if (!validateEmail($email) || !preg_match('/^[^@\s]+@gmail\.com$/i', $email)) {
+    setFlash('danger', 'Please use a valid Gmail address ending in @gmail.com.');
     redirect(appUrl('auth/register.php'));
 }
 
@@ -40,10 +40,34 @@ if ($password !== $confirm) {
 }
 
 $db = getDB();
-$stmt = $db->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
-$stmt->execute([$email]);
-if ($stmt->fetch()) {
-    setFlash('danger', 'An account with this email already exists.');
+$stmt = $db->query("SELECT fullname, phone, email FROM users WHERE role = 'user'");
+$normalizedName = strtolower((string) preg_replace('/\s+/', ' ', $fullname));
+$normalizedPhone = preg_replace('/[^0-9]/', '', $phone) ?? '';
+if (str_starts_with($normalizedPhone, '639') && strlen($normalizedPhone) === 12) {
+    $normalizedPhone = '0' . substr($normalizedPhone, 2);
+}
+
+$duplicateErrors = [];
+foreach ($stmt->fetchAll() as $existing) {
+    $existingName = strtolower((string) preg_replace('/\s+/', ' ', trim((string) $existing['fullname'])));
+    $existingPhone = preg_replace('/[^0-9]/', '', (string) $existing['phone']) ?? '';
+    if (str_starts_with($existingPhone, '639') && strlen($existingPhone) === 12) {
+        $existingPhone = '0' . substr($existingPhone, 2);
+    }
+
+    if ($existingName === $normalizedName) {
+        $duplicateErrors[] = 'Full name is already used.';
+    }
+    if ($existingPhone === $normalizedPhone) {
+        $duplicateErrors[] = 'Phone number is already used.';
+    }
+    if (strtolower(trim((string) $existing['email'])) === $email) {
+        $duplicateErrors[] = 'Gmail address is already used.';
+    }
+}
+
+if (!empty($duplicateErrors)) {
+    setFlash('danger', implode(' ', array_values(array_unique($duplicateErrors))));
     redirect(appUrl('auth/register.php'));
 }
 
