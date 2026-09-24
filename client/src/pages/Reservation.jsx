@@ -96,12 +96,16 @@ const SERVICE_DETAIL_FIELDS = {
   Marriage: [
     { key: 'bride_full_name', label: "Full Name" },
     { key: 'bride_age', label: "Age" },
+    { key: 'bride_birthdate', label: "Date of Birth" },
+    { key: 'bride_birth_place', label: "Place of Birth" },
     { key: 'bride_address', label: "Address" },
     { key: 'bride_contact_number', label: "Contact" },
     { key: 'bride_father_name', label: "Father's Full Name" },
     { key: 'bride_mother_name', label: "Mother's Full Name" },
     { key: 'groom_full_name', label: "Full Name" },
     { key: 'groom_age', label: "Age" },
+    { key: 'groom_birthdate', label: "Date of Birth" },
+    { key: 'groom_birth_place', label: "Place of Birth" },
     { key: 'groom_address', label: "Address" },
     { key: 'groom_contact_number', label: "Contact" },
     { key: 'groom_father_name', label: "Father's Full Name" },
@@ -393,11 +397,11 @@ export default function Reservation() {
     const groomAge = Number(form.serviceDetails?.groom_age ?? '');
 
     if (!Number.isInteger(brideAge) || brideAge < 18 || brideAge > 120) {
-      errors.bride_age = 'Bride age must be between 18 and 120.';
+      errors.bride_age = 'Bride age must be at least 18 years old.';
     }
 
     if (!Number.isInteger(groomAge) || groomAge < 18 || groomAge > 120) {
-      errors.groom_age = 'Groom age must be between 18 and 120.';
+      errors.groom_age = 'Groom age must be at least 18 years old.';
     }
 
     return errors;
@@ -847,35 +851,33 @@ export default function Reservation() {
               {isMarriageFlow && currentStep === 2 && (
                 <div className="space-y-5">
                   {[
-                    ['Bride Information', marriageCoupleFields.slice(0, 6)],
-                    ['Groom Information', marriageCoupleFields.slice(6)],
+                    ['Bride Information', marriageCoupleFields.slice(0, 8)],
+                    ['Groom Information', marriageCoupleFields.slice(8)],
                   ].map(([heading, fields]) => (
                     <section key={heading} className="rounded-[24px] border border-slate-200 bg-[#f8fafc] p-4 sm:p-5">
                       <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{heading}</h3>
                       <div className="grid gap-4 sm:grid-cols-2">
                         {fields.map((field) => (
-                          <label key={field.key} className={`block text-sm text-slate-700 ${field.key.includes('address') ? 'sm:col-span-2' : ''}`}>
+                          <label key={field.key} className={`block text-sm text-slate-700 ${field.key.includes('address') || field.key.includes('birth_place') ? 'sm:col-span-2' : ''}`}>
                             <span className="mb-2 block font-medium">{field.label}</span>
                             {field.key.includes('address') ? (
                               <textarea className="input-field min-h-[90px]" value={form.serviceDetails[field.key] || ''} onChange={(event) => setForm((prev) => ({ ...prev, serviceDetails: { ...prev.serviceDetails, [field.key]: event.target.value } }))} required />
                             ) : (
                               <input
-                                type={field.key.includes('age') ? 'number' : field.key.includes('contact') ? 'tel' : 'text'}
+                                type={
+                                  field.key.includes('birthdate')
+                                    ? 'date'
+                                    : field.key.includes('age')
+                                      ? 'number'
+                                      : field.key.includes('contact')
+                                        ? 'tel'
+                                        : 'text'
+                                }
                                 min={field.key.includes('age') ? 18 : undefined}
                                 max={field.key.includes('age') ? 120 : undefined}
                                 className="input-field"
                                 value={form.serviceDetails[field.key] || ''}
-                                onChange={(event) => {
-                                  const value = event.target.value;
-                                  if (field.key.includes('age') && value !== '') {
-                                    const numericValue = Number(value);
-                                    if (numericValue < 18) {
-                                      setForm((prev) => ({ ...prev, serviceDetails: { ...prev.serviceDetails, [field.key]: '18' } }));
-                                      return;
-                                    }
-                                  }
-                                  setForm((prev) => ({ ...prev, serviceDetails: { ...prev.serviceDetails, [field.key]: value } }));
-                                }}
+                                onChange={(event) => setForm((prev) => ({ ...prev, serviceDetails: { ...prev.serviceDetails, [field.key]: event.target.value } }))}
                                 required
                               />
                             )}

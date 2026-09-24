@@ -162,11 +162,11 @@ export default function DocumentUpload({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {requirements.length > 0 ? (
         <>
           <div
-            className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+            className={`rounded-xl border-2 border-dashed p-3 text-center transition-colors sm:p-6 ${
               dragActive ? 'border-parish-blue bg-parish-blue-light' : 'border-gray-300 hover:border-gray-400'
             }`}
             onDragEnter={handleDrag}
@@ -175,11 +175,11 @@ export default function DocumentUpload({
             onDrop={handleDrop}
           >
             <div className="space-y-2">
-              <div className="text-4xl">📤</div>
+              <div className="text-3xl sm:text-4xl">📤</div>
               <p className="text-sm font-medium text-gray-700">
                 Drag and drop files here
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-[10px] text-gray-500 sm:text-xs">
                 Accepted: JPG, PNG, PDF (max 5MB each)
               </p>
             </div>
@@ -196,7 +196,7 @@ export default function DocumentUpload({
             </div>
           )}
 
-          <div className="space-y-2">
+          <div className="space-y-2 sm:space-y-3">
             {requirements.map((req) => {
               const file = files[req.type];
               const existing = existingDocuments.find(d => d.document_type === req.type);
@@ -206,7 +206,7 @@ export default function DocumentUpload({
               return (
                 <div
                   key={req.type}
-                  className={`border rounded-lg p-3 ${
+                  className={`rounded-xl border p-2.5 sm:p-3 ${
                     status === 'Verified' ? 'border-green-300 bg-green-50' :
                     status === 'Rejected' ? 'border-red-300 bg-red-50' :
                     file ? 'border-blue-300 bg-blue-50' :
@@ -222,46 +222,46 @@ export default function DocumentUpload({
                     className="sr-only"
                     accept=".jpg,.jpeg,.png,.pdf"
                   />
-                  <div className="flex items-center justify-between">
-                    <div className="flex min-w-0 flex-1 items-center gap-3">
-                      <span className="text-2xl">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 flex-1 items-start gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-2xl shadow-sm sm:h-12 sm:w-12">
                         {file ? getFileIcon(file.type) : getFileIcon('application/pdf')}
                       </span>
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{req.name}</p>
-                        <p className="text-xs text-gray-500">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-800">{req.name}</p>
+                        <p className="text-[10px] text-gray-500 sm:text-xs">
                           {req.required ? 'Required' : 'Optional'}
                         </p>
                         {file && (
-                          <p className="text-xs text-gray-600 truncate">{file.name}</p>
+                          <p className="mt-1 truncate text-[10px] text-gray-600 sm:text-xs" title={file.name}>{file.name}</p>
                         )}
                         {existing && !file && (
-                          <p className="text-xs text-gray-600">
+                          <p className="mt-1 text-[10px] text-gray-600 sm:text-xs">
                             Uploaded: {new Date(existing.uploaded_at).toLocaleDateString()}
                           </p>
                         )}
                       </div>
                     </div>
-                      <div className="flex flex-wrap items-center justify-end gap-2">
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
                       {isUploading ? (
                         <span className="text-xs text-blue-600">Uploading...</span>
                       ) : (
                         <>
-                            <button
-                              type="button"
-                              onClick={() => onButtonClick(req.type)}
-                              className="btn-primary min-h-10 px-3 py-2 text-xs"
-                            >
-                              {file ? 'Change File' : 'Select File'}
-                            </button>
-                          <span className={`text-xs px-2 py-1 rounded border ${getStatusColor(status)}`}>
+                          <button
+                            type="button"
+                            onClick={() => onButtonClick(req.type)}
+                            className="btn-primary w-full min-h-10 px-3 py-2 text-[11px] sm:w-auto sm:text-xs"
+                          >
+                            {file ? 'Change File' : 'Select File'}
+                          </button>
+                          <span className={`self-start rounded border px-2 py-1 text-[10px] sm:text-xs ${getStatusColor(status)}`}>
                             {status === 'missing' ? 'Not uploaded' : status}
                           </span>
                           {file && (
                             <button
                               type="button"
                               onClick={() => removeFile(req.type)}
-                              className="text-red-600 hover:text-red-800 text-sm"
+                              className="text-sm text-red-600 hover:text-red-800 sm:self-auto"
                               aria-label="Remove file"
                             >
                               ✕
@@ -271,7 +271,7 @@ export default function DocumentUpload({
                             <button
                               type="button"
                               onClick={() => onDocumentReplace(req.type)}
-                              className="text-xs text-blue-600 underline"
+                              className="text-[11px] text-blue-600 underline sm:text-xs"
                             >
                               Replace
                             </button>
@@ -280,7 +280,7 @@ export default function DocumentUpload({
                             <button
                               type="button"
                               onClick={() => setPreview({ src: previews[req.type], alt: file.name })}
-                              className="text-xs text-blue-600 underline"
+                              className="text-[11px] text-blue-600 underline sm:text-xs"
                             >
                               Preview
                             </button>
@@ -295,20 +295,20 @@ export default function DocumentUpload({
                         <img
                           src={previews[req.type]}
                           alt={`Preview of ${file.name}`}
-                          className="h-14 w-14 rounded object-cover"
+                          className="h-12 w-12 rounded object-cover sm:h-14 sm:w-14"
                         />
                       ) : (
-                        <span className="flex h-14 w-14 items-center justify-center rounded bg-gray-100 text-2xl">
+                        <span className="flex h-12 w-12 items-center justify-center rounded bg-gray-100 text-xl sm:h-14 sm:w-14 sm:text-2xl">
                           {getFileIcon(file.type)}
                         </span>
                       )}
-                      <p className="min-w-0 flex-1 truncate text-xs text-gray-700" title={file.name}>
+                      <p className="min-w-0 flex-1 truncate text-[10px] text-gray-700 sm:text-xs" title={file.name}>
                         ✓ {file.name}
                       </p>
                     </div>
                   )}
                   {existing && existing.remarks && status === 'Rejected' && (
-                    <p className="text-xs text-red-600 mt-2 italic">
+                    <p className="mt-2 text-[10px] italic text-red-600 sm:text-xs">
                       Remarks: "{existing.remarks}"
                     </p>
                   )}

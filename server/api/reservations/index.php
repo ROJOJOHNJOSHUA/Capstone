@@ -158,12 +158,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($isMarriage) {
         $marriageErrors = validateRequired([
             'fullname', 'email', 'phone', 'address',
-            'bride_full_name', 'bride_age', 'bride_address', 'bride_contact_number', 'bride_father_name', 'bride_mother_name',
-            'groom_full_name', 'groom_age', 'groom_address', 'groom_contact_number', 'groom_father_name', 'groom_mother_name',
+            'bride_full_name', 'bride_age', 'bride_birthdate', 'bride_birth_place', 'bride_address', 'bride_contact_number', 'bride_father_name', 'bride_mother_name',
+            'groom_full_name', 'groom_age', 'groom_birthdate', 'groom_birth_place', 'groom_address', 'groom_contact_number', 'groom_father_name', 'groom_mother_name',
         ], $serviceDetails);
         foreach (['bride_age', 'groom_age'] as $ageField) {
             if (!filter_var($serviceDetails[$ageField] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 18, 'max_range' => 120]])) {
-                $marriageErrors[$ageField] = 'Please enter a valid age.';
+                $marriageErrors[$ageField] = 'Age must be at least 18.';
+            }
+        }
+        foreach (['bride_birthdate', 'groom_birthdate'] as $dateField) {
+            $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', (string) ($serviceDetails[$dateField] ?? ''), parishTimezone());
+            if (!$parsed || $parsed->format('Y-m-d') !== ($serviceDetails[$dateField] ?? '')) {
+                $marriageErrors[$dateField] = 'Please enter a valid date of birth.';
             }
         }
         if (!empty($marriageErrors)) errorResponse('Marriage reservation validation failed.', 422, $marriageErrors);

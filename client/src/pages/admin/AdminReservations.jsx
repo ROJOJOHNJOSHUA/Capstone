@@ -182,6 +182,8 @@ function marriagePresentation(reservation) {
     bride: {
       fullName: valueFrom(details, ['bride_full_name', "Bride's Full Name"]),
       age: valueFrom(details, ['bride_age', "Bride's Age"]),
+      birthdate: valueFrom(details, ['bride_birthdate', "Bride's Date of Birth"]),
+      birthPlace: valueFrom(details, ['bride_birth_place', "Bride's Place of Birth"]),
       address: valueFrom(details, ['bride_address', "Bride's Address"]),
       contact: valueFrom(details, ['bride_contact_number', "Bride's Contact Number"]),
       father: valueFrom(details, ['bride_father_name', "Bride's Father Full Name"]),
@@ -190,6 +192,8 @@ function marriagePresentation(reservation) {
     groom: {
       fullName: valueFrom(details, ['groom_full_name', "Groom's Full Name"]),
       age: valueFrom(details, ['groom_age', "Groom's Age"]),
+      birthdate: valueFrom(details, ['groom_birthdate', "Groom's Date of Birth"]),
+      birthPlace: valueFrom(details, ['groom_birth_place', "Groom's Place of Birth"]),
       address: valueFrom(details, ['groom_address', "Groom's Address"]),
       contact: valueFrom(details, ['groom_contact_number', "Groom's Contact Number"]),
       father: valueFrom(details, ['groom_father_name', "Groom's Father Full Name"]),
@@ -475,7 +479,7 @@ export default function AdminReservations() {
                             Mark as Paid
                           </button>
                         )}
-                        {((r.service_type === 'Mass Intention' && r.status === 'Approved') || (['Approved', 'Paid'].includes(r.status) && r.service_type !== 'Mass Intention')) && (
+                        {(r.service_type === 'Mass Intention' && r.status === 'Approved') || (r.service_type !== 'Mass Intention' && r.status === 'Paid') ? (
                           <button
                             type="button"
                             className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-600 hover:text-white"
@@ -483,7 +487,7 @@ export default function AdminReservations() {
                           >
                             Complete
                           </button>
-                        )}
+                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -532,6 +536,8 @@ export default function AdminReservations() {
                           fields={[
                             ['Full Name', presentation.bride.fullName],
                             ['Age', presentation.bride.age],
+                            ['Date of Birth', presentation.bride.birthdate],
+                            ['Place of Birth', presentation.bride.birthPlace],
                             ['Address', presentation.bride.address],
                             ['Contact Number', presentation.bride.contact],
                             ["Father's Full Name", presentation.bride.father],
@@ -543,6 +549,8 @@ export default function AdminReservations() {
                           fields={[
                             ['Full Name', presentation.groom.fullName],
                             ['Age', presentation.groom.age],
+                            ['Date of Birth', presentation.groom.birthdate],
+                            ['Place of Birth', presentation.groom.birthPlace],
                             ['Address', presentation.groom.address],
                             ['Contact Number', presentation.groom.contact],
                             ["Father's Full Name", presentation.groom.father],

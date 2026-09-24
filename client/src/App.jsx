@@ -104,7 +104,14 @@ export default function App() {
       <LocalDevelopmentDiagnostics />
       <LoginWelcomeAlert />
       <Routes>
-      <Route path="/" element={<Home />} />
+      <Route
+        path="/"
+        element={
+          <GuestRoute>
+            <Home />
+          </GuestRoute>
+        }
+      />
       <Route path="/services" element={<Services />} />
       <Route path="/about" element={<About />} />
       <Route path="/contact" element={<Contact />} />
@@ -120,7 +127,9 @@ export default function App() {
       <Route
         path="/register"
         element={
-          <Register />
+          <GuestRoute>
+            <Register />
+          </GuestRoute>
         }
       />
       <Route
