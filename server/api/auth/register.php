@@ -40,9 +40,9 @@ $phone = trim((string) $data['phone']);
 
 // Serialize equivalent registrations so the duplicate checks and insert are atomic.
 $lockNames = [
-    'email:' . hash('sha256', $email),
-    'name:' . hash('sha256', normalizeRegistrationName($fullname)),
-    'phone:' . hash('sha256', normalizeRegistrationPhone($phone)),
+    'email:' . substr(hash('sha256', $email), 0, 58),
+    'name:' . substr(hash('sha256', normalizeRegistrationName($fullname)), 0, 59),
+    'phone:' . substr(hash('sha256', normalizeRegistrationPhone($phone)), 0, 58),
 ];
 sort($lockNames, SORT_STRING);
 $acquiredLocks = [];

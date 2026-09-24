@@ -82,10 +82,13 @@ api.interceptors.response.use(
       unauthorizedHandler();
     }
 
-    const message = err.response?.data?.message || 'An error occurred.';
+    const responseData = err.response?.data;
+    const message = responseData?.message
+      || (status >= 500 ? 'The server is temporarily unavailable. Please try again later.' : '')
+      || 'An error occurred.';
     return Promise.reject({
       message,
-      errors: err.response?.data?.errors,
+      errors: responseData?.errors,
       status,
     });
   }
