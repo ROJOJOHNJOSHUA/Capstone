@@ -67,7 +67,7 @@ export default function Footer() {
       <div
         className="relative w-full overflow-hidden bg-[#14212b]"
         style={{
-          backgroundImage: "linear-gradient(90deg, rgba(20, 33, 43, 0.98) 0%, rgba(20, 33, 43, 0.95) 48%, rgba(20, 33, 43, 0.82) 100%), url('/parish.jpg')",
+          backgroundImage: "linear-gradient(90deg, rgba(20, 33, 43, 0.98) 0%, rgba(20, 33, 43, 0.95) 48%, rgba(20, 33, 43, 0.82) 100%), url('/jesus.jpg')",
           backgroundPosition: 'center right',
           backgroundSize: 'cover',
         }}
