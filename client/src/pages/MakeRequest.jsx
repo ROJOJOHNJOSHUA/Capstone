@@ -24,7 +24,7 @@ function IconCalendar({ className = 'h-6 w-6' }) {
 const REQUEST_CARDS = [
   {
     to: '/reservations?new=1',
-    image: '/faith.png',
+    image: '/jesus.png',
     imageAlt: 'Parish church interior',
     Icon: IconDocument,
     title: 'Reservation',
@@ -33,7 +33,7 @@ const REQUEST_CARDS = [
   },
   {
     to: '/appointments?new=1',
-    image: 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&fit=crop&w=1200&q=80',
+    image: 'Appointment.png',
     imageAlt: 'Writing an appointment request',
     Icon: IconCalendar,
     title: 'Appointment',
