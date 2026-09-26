@@ -207,7 +207,7 @@ export default function Dashboard() {
 
         <div className="overflow-hidden rounded-[24px] border border-[#ece4d3] bg-[#fffdf8] shadow-[0_14px_30px_rgba(83,65,34,0.06)]">
           <div className="relative h-44">
-            <img src="/faith.png" alt="Inside the parish church" className="absolute inset-0 h-full w-full object-cover" />
+            <img src="/jesus.jpg" alt="Inside the parish church" className="absolute inset-0 h-full w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent" aria-hidden="true" />
           </div>
           <div className="p-5">

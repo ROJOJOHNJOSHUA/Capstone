@@ -22,32 +22,27 @@ export const SERVICE_COLORS = {
 export const SERVICE_CARDS = [
   {
     name: 'Marriage',
-    image:
-      'https://images.unsplash.com/photo-1520854221256-17451cc331bf?auto=format&fit=crop&w=1200&q=80',
+    image: '/Marriage.png',
     description: 'Celebrate a sacramental union in a solemn and prayerful parish setting.',
   },
   {
     name: 'Funeral',
-    image:
-      'https://images.unsplash.com/photo-1475070929565-c985b496cb9f?auto=format&fit=crop&w=1200&q=80',
+    image: '/Funeral.png',
     description: 'Book a respectful liturgical service for final commendation and prayer.',
   },
   {
     name: 'Baptism',
-    image:
-      'https://images.unsplash.com/photo-1519750783826-e2420f4d687f?auto=format&fit=crop&w=1200&q=80',
+    image: '/Baptism.png',
     description: 'Welcome children into the faith through scheduled parish baptism rites.',
   },
   {
     name: 'Mass Intention',
-    image:
-      'https://images.unsplash.com/photo-1504052434569-70ad5836ab65?auto=format&fit=crop&w=1200&q=80',
+    image: '/MassIntention.png',
     description: 'Offer prayer intentions during Mass for thanksgiving or special petitions.',
   },
   {
     name: 'Private Mass',
-    image:
-      'https://images.unsplash.com/photo-1548625149-720134d51a3a?auto=format&fit=crop&w=1200&q=80',
+    image: '/PrivateMass.png',
     description: 'Request a private Mass for family milestones and meaningful occasions.',
   },
 ];

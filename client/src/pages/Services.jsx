@@ -8,7 +8,7 @@ import { CORE_FEATURE_CARDS, SERVICE_CARDS, SERVICE_REQUIREMENTS } from '../util
 const APPOINTMENT_CARD = {
   name: 'Appointments',
   description: 'Meet with the parish staff for your concerns.',
-  image: CORE_FEATURE_CARDS[2].image,
+  image: '/Appointment.jpg',
   requirements: SERVICE_REQUIREMENTS.Appointments,
 };
 
