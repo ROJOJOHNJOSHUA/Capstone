@@ -23,7 +23,7 @@ function IconChurch({ className = 'h-5 w-5' }) {
   return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 21h16M6 21V10l6-4 6 4v11M9 21v-5h6v5M12 3v5M9.5 5.5h5" /></svg>;
 }
 
-export default function Sidebar({ isMobileOpen = false, onClose = () => {} }) {
+export default function Sidebar({ isMobileOpen = false, onClose = () => {}, onRecordsClick = () => {} }) {
   const { isAdmin } = useAuth();
   const { t } = useSettings();
 
@@ -65,7 +65,10 @@ export default function Sidebar({ isMobileOpen = false, onClose = () => {} }) {
               <NavLink
                 key={link.to}
                 to={link.to}
-                onClick={onClose}
+                onClick={() => {
+                  onClose();
+                  if (link.to === '/admin/records') onRecordsClick();
+                }}
                 className={({ isActive }) =>
                       `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
                     isActive

@@ -181,16 +181,18 @@ export default function Navbar({ dashboard = false, isSidebarOpen = false, onSid
 
           <div className="flex-1 flex justify-center min-w-0">
             <div className="hidden sm:flex items-center justify-center gap-1 md:gap-7 lg:gap-10 px-1 md:px-4">
-              {user && !isAdmin ? (
+              {user ? (
                 <div className="hidden md:flex max-w-[38rem] flex-col items-center justify-center gap-1 px-4 text-center">
                   <span className="text-xs italic leading-relaxed text-(#000000) lg:text-sm">
-                    &ldquo;For where two or three gather in my name, there am I with them.&rdquo;
+                    {isAdmin
+                      ? '“Trust in the LORD with all your heart, and do not lean on your own understanding. In all your ways acknowledge Him, and He will make straight your paths.”'
+                      : '“For where two or three gather in my name, there am I with them.”'}
                   </span>
                   <span className="text-[9px] font-semibold uppercase tracking-[0.24em] text-[#d7b57a] lg:text-[10px]">
-                    Matthew 18:20
+                    {isAdmin ? 'Proverbs 3:5–6' : 'Matthew 18:20'}
                   </span>
                 </div>
-              ) : !user ? (
+              ) : (
                 <>
                   {[
                     ['/', t('nav.home')],
@@ -212,7 +214,7 @@ export default function Navbar({ dashboard = false, isSidebarOpen = false, onSid
                     </NavLink>
                   ))}
                 </>
-              ) : null}
+              )}
             </div>
           </div>
 

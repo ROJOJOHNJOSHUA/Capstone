@@ -22,7 +22,7 @@ require_once __DIR__ . '/documents.php';
  * @param array $fileFile The $_FILES array element
  * @return array Result with 'valid' boolean and 'error' message if invalid
  */
-function validateUploadedFile(array $fileFile): array
+function validateUploadedFile(array $fileFile, ?int $maximumFileSize = null, bool $allowAnyMimeType = false): array
 {
     // Check for upload errors
     if (!isset($fileFile['error']) || is_array($fileFile['error'])) {
@@ -52,10 +52,14 @@ function validateUploadedFile(array $fileFile): array
     }
 
     // Validate file size
-    if (!isValidFileSize((int) $fileFile['size'])) {
+    $fileSize = (int) $fileFile['size'];
+    $sizeIsValid = $maximumFileSize === null
+        ? isValidFileSize($fileSize)
+        : $fileSize > 0 && $fileSize <= $maximumFileSize;
+    if (!$sizeIsValid) {
         return [
             'valid' => false,
-            'error' => 'File size exceeds maximum allowed size of 5MB.'
+            'error' => 'File size exceeds maximum allowed size of ' . ($maximumFileSize === null ? '5MB.' : '10MB.')
         ];
     }
 
@@ -68,7 +72,7 @@ function validateUploadedFile(array $fileFile): array
     $finfo = new finfo(FILEINFO_MIME_TYPE);
     $detectedMime = $finfo->file($fileFile['tmp_name']);
     
-    if (!isAllowedMimeType($detectedMime)) {
+    if (!$allowAnyMimeType && !isAllowedMimeType($detectedMime)) {
         return [
             'valid' => false,
             'error' => 'Invalid file type. Only JPG, PNG, and PDF files are allowed.'

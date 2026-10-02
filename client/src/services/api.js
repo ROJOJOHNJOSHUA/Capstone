@@ -150,6 +150,29 @@ export const createRecord = (data) => api.post('/records/index.php', data);
 export const updateRecord = (data) => api.put('/records/index.php', data);
 export const deleteRecord = (id) => api.delete(`/records/index.php?id=${id}`);
 export const getRecordArchive = (params) => api.get('/records/archive.php', { params });
+export const getRecordFolders = (params) => api.get('/records/folders.php', { params });
+export const createRecordFolder = (data) => api.post('/records/folders.php', data);
+export const deleteRecordFolder = (id) => api.delete(`/records/folders.php?id=${id}`);
+export const getRecordFiles = (params) => api.get('/records/files.php', { params });
+export const uploadRecordFile = (formData) =>
+  api.post('/records/files.php', formData, { headers: { 'Content-Type': false } });
+export const deleteRecordFile = (id) => api.delete(`/records/files.php?id=${id}`);
+export async function fetchRecordFile(fileId, inline = false) {
+  const params = new URLSearchParams({ id: String(fileId) });
+  if (inline) params.set('disposition', 'inline');
+  const response = await fetch(`${API_BASE}/records/files.php?${params}`, { credentials: 'include' });
+  if (!response.ok) {
+    let message = 'Failed to load file.';
+    try {
+      const payload = await response.json();
+      if (payload?.message) message = payload.message;
+    } catch {
+      // The server may return a non-JSON error response.
+    }
+    throw new Error(message);
+  }
+  return response.blob();
+}
 export const getRecordArchiveDetail = (userId) =>
   api.get('/records/archive.php', { params: { user_id: userId } });
 export const getReservationRecordDetail = (reservationId) =>

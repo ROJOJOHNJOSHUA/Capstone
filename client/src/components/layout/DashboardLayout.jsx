@@ -3,7 +3,7 @@ import Navbar from '../navbar/Navbar';
 import Sidebar from '../sidebar/Sidebar';
 import Footer from '../footer/Footer';
 
-export default function DashboardLayout({ children }) {
+export default function DashboardLayout({ children, contentClassName = '', onRecordsClick }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -23,9 +23,9 @@ export default function DashboardLayout({ children }) {
         />
       )}
       <div className="relative flex flex-1 min-h-0 min-w-0 xl:pl-64 xl:overflow-hidden">
-        <Sidebar isMobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar isMobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} onRecordsClick={onRecordsClick} />
         <div className="flex flex-1 flex-col min-h-0 min-w-0">
-          <main className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-8">
+          <main className={`flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-8 ${contentClassName}`}>
             {children}
           </main>
           <Footer />

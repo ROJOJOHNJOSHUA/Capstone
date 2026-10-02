@@ -174,6 +174,39 @@ CREATE TABLE IF NOT EXISTS parish_records (
   ,UNIQUE KEY uk_parish_records_reservation (reservation_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS record_folders (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  parent_id INT NULL,
+  parent_scope VARCHAR(160) NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  created_by INT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (parent_id) REFERENCES record_folders(id) ON DELETE CASCADE,
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  UNIQUE KEY uk_record_folder_scope_name (parent_scope, name),
+  INDEX idx_record_folders_parent (parent_id),
+  INDEX idx_record_folders_scope (parent_scope)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS record_files (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  folder_id INT NULL,
+  parent_scope VARCHAR(160) NOT NULL,
+  original_filename VARCHAR(255) NOT NULL,
+  stored_filename VARCHAR(255) NOT NULL,
+  file_path VARCHAR(500) NOT NULL,
+  mime_type VARCHAR(100) NOT NULL,
+  file_size INT UNSIGNED NOT NULL,
+  uploaded_by INT NULL,
+  uploaded_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (folder_id) REFERENCES record_folders(id) ON DELETE CASCADE,
+  FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL,
+  INDEX idx_record_files_scope (parent_scope),
+  INDEX idx_record_files_folder (folder_id),
+  INDEX idx_record_files_uploaded (uploaded_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ---------------------------------------------------------------------------
 -- SMS
 -- Statuses: sent, failed, pending

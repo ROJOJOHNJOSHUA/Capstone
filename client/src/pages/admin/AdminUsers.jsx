@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Pencil, SquarePen, Trash2 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import LoadingSpinner from '../../components/forms/LoadingSpinner';
 import Modal from '../../components/forms/Modal';
@@ -35,6 +37,7 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [activeMenu, setActiveMenu] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -60,6 +63,35 @@ export default function AdminUsers() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!activeMenu) return undefined;
+    const closeMenu = () => setActiveMenu(null);
+    window.addEventListener('scroll', closeMenu, true);
+    window.addEventListener('resize', closeMenu);
+    return () => {
+      window.removeEventListener('scroll', closeMenu, true);
+      window.removeEventListener('resize', closeMenu);
+    };
+  }, [activeMenu]);
+
+  const toggleActionMenu = (event, user) => {
+    if (activeMenu?.id === user.id) {
+      setActiveMenu(null);
+      return;
+    }
+    const rect = event.currentTarget.getBoundingClientRect();
+    const menuHeight = 80;
+    const menuWidth = 160;
+    const openAbove = rect.bottom + menuHeight > window.innerHeight - 8 && rect.top > menuHeight + 8;
+    const preferredTop = openAbove ? rect.top - menuHeight - 8 : rect.bottom + 8;
+    setActiveMenu({
+      id: user.id,
+      user,
+      top: Math.min(Math.max(8, preferredTop), Math.max(8, window.innerHeight - menuHeight - 8)),
+      right: Math.min(window.innerWidth - menuWidth - 8, Math.max(8, window.innerWidth - rect.right)),
+    });
+  };
 
   const flash = (msg) => {
     setMessage(msg);
@@ -257,20 +289,15 @@ export default function AdminUsers() {
                       </td>
                       <td className="px-5 py-4 text-slate-500">{user.created_at?.slice(0, 10)}</td>
                       <td className="px-5 py-4">
-                        <div className="flex justify-end gap-2 whitespace-nowrap">
+                        <div className="flex justify-end">
                           <button
                             type="button"
-                            className="rounded-lg border border-[#0f2337] px-3 py-1.5 text-xs font-semibold text-[#0f2337] transition hover:bg-[#0f2337] hover:text-white"
-                            onClick={() => openEdit(user)}
+                            aria-label={`${t('common.actions')} for ${user.fullname}`}
+                            aria-expanded={activeMenu?.id === user.id}
+                            className="rounded-md p-2 text-[#7a7d7f] transition hover:bg-[#f1e7d1] hover:text-[#8a6b34]"
+                            onClick={(event) => toggleActionMenu(event, user)}
                           >
-                            {t('users.editUser')}
-                          </button>
-                          <button
-                            type="button"
-                            className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-600 hover:text-white"
-                            onClick={() => handleDelete(user)}
-                          >
-                            {t('common.delete')}
+                            <SquarePen className="h-4 w-4" />
                           </button>
                         </div>
                       </td>
@@ -308,6 +335,18 @@ export default function AdminUsers() {
             </div>
           )}
         </>
+      )}
+
+      {activeMenu && createPortal(
+        <div className="fixed z-[1000] w-40 rounded-md border border-[#e7dfd2] bg-[#fffdf8] py-1 text-left shadow-lg" style={{ top: activeMenu.top, right: activeMenu.right }}>
+          <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-[#34495a] hover:bg-[#f8f6f1]" onClick={() => { setActiveMenu(null); openEdit(activeMenu.user); }}>
+            <Pencil className="h-4 w-4" />{t('users.editUser')}
+          </button>
+          <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-700 hover:bg-red-50" onClick={() => { setActiveMenu(null); handleDelete(activeMenu.user); }}>
+            <Trash2 className="h-4 w-4" />{t('common.delete')}
+          </button>
+        </div>,
+        document.body,
       )}
 
       <Modal
