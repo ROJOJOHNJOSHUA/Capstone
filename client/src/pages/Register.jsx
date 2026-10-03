@@ -3,6 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/navbar/Navbar';
 import Footer from '../components/footer/Footer';
+import {
+  formatPhilippineMobileNumber,
+  normalizePhilippineMobileInput,
+  validatePhilippineMobileDigits,
+} from '../utils/philippinePhone';
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -19,7 +24,16 @@ export default function Register() {
   const { register, user } = useAuth();
   const navigate = useNavigate();
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    if (name === 'phone') {
+      const phone = normalizePhilippineMobileInput(value);
+      setForm((current) => ({ ...current, phone }));
+      setFieldErrors((current) => ({ ...current, phone: validatePhilippineMobileDigits(phone, false) }));
+      return;
+    }
+    setForm((current) => ({ ...current, [name]: value }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -28,6 +42,11 @@ export default function Register() {
     const normalizedEmail = form.email.trim();
     if (!/^[^@\s]+@gmail\.com$/i.test(normalizedEmail)) {
       setFieldErrors({ email: 'Please use a valid Gmail address ending in @gmail.com.' });
+      return;
+    }
+    const phoneError = validatePhilippineMobileDigits(form.phone);
+    if (phoneError) {
+      setFieldErrors({ phone: phoneError });
       return;
     }
     if (form.password !== form.confirm) {
@@ -39,7 +58,7 @@ export default function Register() {
       await register({
         fullname: form.fullname.trim(),
         email: normalizedEmail,
-        phone: form.phone.trim(),
+        phone: formatPhilippineMobileNumber(form.phone),
         address: form.address.trim(),
         password: form.password,
         confirm_password: form.confirm,
@@ -55,15 +74,36 @@ export default function Register() {
 
   const field = (name, label, type = 'text', required = true) => (
     <div>
-      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">{label}</label>
-      <input
-        type={type}
-        name={name}
-        className={`w-full rounded-xl border bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#d7b57a] focus:bg-white focus:ring-2 focus:ring-[#d7b57a]/20 ${fieldErrors[name] ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
-        value={form[name]}
-        onChange={handleChange}
-        required={required}
-      />
+      <label htmlFor={`register-${name}`} className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">{label}</label>
+      {name === 'phone' ? (
+        <div className={`flex w-full items-center overflow-hidden rounded-xl border bg-slate-50 text-sm text-slate-800 transition focus-within:border-[#d7b57a] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#d7b57a]/20 ${fieldErrors.phone ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}>
+          <span className="border-r border-slate-200 px-3.5 py-2.5 font-medium text-slate-600">+63</span>
+          <input
+            id="register-phone"
+            type="tel"
+            name="phone"
+            inputMode="numeric"
+            autoComplete="tel-national"
+            placeholder="9XXXXXXXXX"
+            maxLength={10}
+            className="min-w-0 flex-1 bg-transparent px-3.5 py-2.5 outline-none"
+            value={form.phone}
+            onChange={handleChange}
+            required={false}
+          />
+        </div>
+      ) : (
+        <input
+          id={`register-${name}`}
+          type={type}
+          name={name}
+          className={`w-full rounded-xl border bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#d7b57a] focus:bg-white focus:ring-2 focus:ring-[#d7b57a]/20 ${fieldErrors[name] ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
+          value={form[name]}
+          onChange={handleChange}
+          required={required}
+        />
+      )}
+      {name === 'phone' && <p className="mt-1 text-[11px] text-slate-500">Enter 10 digits, for example +63 9XXXXXXXXX.</p>}
       {fieldErrors[name] && <p className="mt-1 text-xs text-red-600">{fieldErrors[name]}</p>}
     </div>
   );
