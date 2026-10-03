@@ -123,6 +123,7 @@ export default function RegisterModal({ isOpen, onClose, onRegistered, onLoginCl
           id={`modal-register-${name}`}
           type={type}
           name={name}
+          placeholder={name === 'email' ? 'example@gmail.com' : undefined}
           value={form[name]}
           onChange={handleChange}
           required={required}

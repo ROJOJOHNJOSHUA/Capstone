@@ -97,6 +97,7 @@ export default function Register() {
           id={`register-${name}`}
           type={type}
           name={name}
+          placeholder={name === 'email' ? 'example@gmail.com' : undefined}
           className={`w-full rounded-xl border bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#d7b57a] focus:bg-white focus:ring-2 focus:ring-[#d7b57a]/20 ${fieldErrors[name] ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
           value={form[name]}
           onChange={handleChange}

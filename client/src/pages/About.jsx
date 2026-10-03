@@ -337,34 +337,27 @@ Mrs. Paz M. Antivola to Miss Celenia M. Inzon </b></p>
         </div>
       </Modal>
       <Modal isOpen={donationOpen} onClose={() => setDonationOpen(false)} title="Support Our Parish" size="md" backdropClassName="bg-[#14212b]/55">
-        <div className="space-y-5 text-center">
-          <p className="mb-2 text-left text-sm leading-7 text-[#6e7274]">You can send your donations to the church bank accounts listed below.</p>
-          <div className="grid gap-3 text-left sm:grid-cols-2">
-            <div className="flex min-h-[118px] flex-col justify-start rounded-[12px] bg-[#1a99f3] p-0 text-white shadow-[0_8px_16px_rgba(26,153,243,0.14)]">
-              <div className="px-3 pt-2 text-[22px] font-black leading-[0.9] tracking-[-0.06em] text-white mt-2">GCash</div>
-
-              <div className="px-3 pb-2 pt-1">
-                <div className="text-[8px] font-semibold uppercase tracking-[0.14em] text-white/75">Account Name</div>
-                <div className="text-[14px] font-bold leading-tight text-white">John Joshua Rojo</div>
-
-                <div className="mt-1 text-[8px] font-semibold uppercase tracking-[0.14em] text-white/75">Account Number</div>
-                <div className="text-[14px] font-bold leading-tight tracking-[0.08em] text-white">09673941188</div>
-              </div>
+        <div className="space-y-5">
+          <p className="text-sm leading-6 text-[#6e7274]">Send your donation to our parish GCash account:</p>
+          <section className="mx-auto w-full max-w-sm overflow-hidden rounded-xl border border-[#e2ddd3] bg-[#fffdf8] shadow-[0_10px_24px_rgba(39,55,70,0.09)]" aria-label="Parish GCash donation account">
+            <div className="flex items-center justify-between gap-4 bg-[#168fe0] px-5 py-4 text-white">
+              <div>
+                <h3 className="text-lg font-bold leading-tight">GCash</h3>
+               </div>
+              <span className="shrink-0 rounded-md border border-white/25 bg-white/10 px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white">Mobile wallet</span>
             </div>
-
-            <div className="flex min-h-[118px] flex-col justify-start rounded-[12px] bg-[#8fe3a4] p-0 text-slate-900 shadow-[0_8px_16px_rgba(143,227,164,0.14)]">
-              <div className="px-3 pt-2 text-[22px] font-black leading-[0.9] tracking-[-0.06em] text-slate-900 mt-2">LandBank</div>
-
-              <div className="px-3 pb-2 pt-1">
-                <div className="text-[8px] font-semibold uppercase tracking-[0.14em] text-slate-800/75">Account Name</div>
-                <div className="text-[14px] font-bold leading-tight text-slate-900">Holy Family Parish</div>
-
-                <div className="mt-1 text-[8px] font-semibold uppercase tracking-[0.14em] text-slate-800/75">Account Number</div>
-                <div className="text-[14px] font-bold leading-tight tracking-[0.08em] text-slate-900">09673941188</div>
+            <dl className="divide-y divide-[#eee7db] px-5">
+              <div className="grid grid-cols-[minmax(6rem,0.8fr)_minmax(0,1.2fr)] items-center gap-3 py-4">
+                <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8a7c5f]">Account name</dt>
+                <dd className="text-right text-sm font-semibold leading-5 text-[#273746]">holy family parish</dd>
               </div>
-            </div>
-          </div>
-          <p className="text-xs leading-6 text-[#8a8d8f]">The parish's gratitude is heartfelt because of your support.</p>
+              <div className="grid grid-cols-[minmax(6rem,0.8fr)_minmax(0,1.2fr)] items-center gap-3 py-4">
+                <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8a7c5f]">GCash number</dt>
+                <dd className="text-right font-mono text-base font-semibold tabular-nums tracking-[0.04em] text-[#1f3342]">0967 394 1188</dd>
+              </div>
+            </dl>
+          </section>
+          <p className="text-center text-xs leading-5 text-[#8a8d8f]">The parish is grateful for your support.</p>
         </div>
       </Modal>
     </div>

@@ -794,30 +794,25 @@ export default function Reservation() {
                       </label>
                     ))}
                   </div>
-                  <div className="mb-4 grid gap-3 md:grid-cols-2">
-                    <div className="flex min-h-[118px] flex-col justify-start rounded-[12px] bg-[#1a99f3] p-0 text-white shadow-[0_8px_16px_rgba(26,153,243,0.14)]">
-                      <div className="px-3 pt-2 text-[22px] font-black leading-[0.9] tracking-[-0.06em] text-white mt-2">GCash</div>
-
-                      <div className="px-3 pb-2 pt-1">
-                        <div className="text-[8px] font-semibold uppercase tracking-[0.14em] text-white/75">Account Name</div>
-                        <div className="text-[14px] font-bold leading-tight text-white">J*** J***** R***</div>
-
-                        <div className="mt-1 text-[8px] font-semibold uppercase tracking-[0.14em] text-white/75">Account Number</div>
-                        <div className="text-[14px] font-bold leading-tight tracking-[0.08em] text-white">09673941188</div>
+                  <div className="mb-4">
+                    <section className="w-full max-w-xs overflow-hidden rounded-xl border border-[#e2ddd3] bg-[#fffdf8] shadow-[0_8px_18px_rgba(39,55,70,0.08)]" aria-label="Parish GCash payment account">
+                      <div className="flex items-center justify-between gap-3 bg-[#168fe0] px-4 py-3 text-white">
+                        <div>
+                          <h3 className="text-base font-bold leading-tight">GCash</h3>
+                          </div>
+                        <span className="shrink-0 rounded-md border border-white/25 bg-white/10 px-2 py-1 text-[8px] font-semibold uppercase tracking-[0.1em] text-white">Mobile wallet</span>
                       </div>
-                    </div>
-
-                    <div className="flex min-h-[118px] flex-col justify-start rounded-[12px] bg-[#8fe3a4] p-0 text-slate-900 shadow-[0_8px_16px_rgba(143,227,164,0.14)]">
-                      <div className="px-3 pt-2 text-[22px] font-black leading-[0.9] tracking-[-0.06em] text-slate-900 mt-2">LandBank</div>
-
-                      <div className="px-3 pb-2 pt-1">
-                        <div className="text-[8px] font-semibold uppercase tracking-[0.14em] text-slate-800/75">Account Name</div>
-                        <div className="text-[14px] font-bold leading-tight text-slate-900">J*** J***** R***</div>
-
-                        <div className="mt-1 text-[8px] font-semibold uppercase tracking-[0.14em] text-slate-800/75">Account Number</div>
-                        <div className="text-[14px] font-bold leading-tight tracking-[0.08em] text-slate-900">09673941188</div>
-                      </div>
-                    </div>
+                      <dl className="divide-y divide-[#eee7db] px-4">
+                        <div className="grid grid-cols-[minmax(5.5rem,0.8fr)_minmax(0,1.2fr)] items-center gap-2.5 py-3">
+                          <dt className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[#8a7c5f]">Account name</dt>
+                          <dd className="text-right text-xs font-semibold leading-5 text-[#273746]">holy family parish</dd>
+                        </div>
+                        <div className="grid grid-cols-[minmax(5.5rem,0.8fr)_minmax(0,1.2fr)] items-center gap-2.5 py-3">
+                          <dt className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[#8a7c5f]">GCash number</dt>
+                          <dd className="text-right font-mono text-sm font-semibold tabular-nums tracking-[0.03em] text-[#1f3342]">0967 394 1188</dd>
+                        </div>
+                      </dl>
+                    </section>
                   </div>
                   {form.service_type === 'Mass Intention' && (
                     <div className="rounded-[18px] border border-[#e7d7ac] bg-[#f5efdf] p-4 text-sm text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
@@ -1150,7 +1145,7 @@ export default function Reservation() {
                         <div className="rounded-xl border border-[#f2e4bb] bg-[#fffaf0] p-3">
                           <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Payment</div>
                           <div className="mt-1 font-semibold text-[#0f2337]">Mass Intention Fee: ₱100.00</div>
-                          <div className="mt-1 text-sm text-slate-700">Payment method: GCash/Bank</div>
+                          <div className="mt-1 text-sm text-slate-700">Payment method: GCash</div>
                           <div className="mt-1 text-sm text-slate-700">Payment Receipt: {uploadedFiles.payment_receipt ? 'Uploaded' : 'Missing'}</div>
                         </div>
                       )}
