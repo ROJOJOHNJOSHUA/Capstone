@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Search } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import StatusBadge from '../../components/cards/StatusBadge';
 import Modal from '../../components/forms/Modal';
@@ -248,7 +249,8 @@ async function fetchReservationDocument(documentId) {
 
 export default function AdminReservations() {
   const [items, setItems] = useState([]);
-  const [filter, setFilter] = useState('Pending');
+  const [filter, setFilter] = useState('Under Review');
+  const [search, setSearch] = useState('');
   const [modal, setModal] = useState(null);
   const [remarks, setRemarks] = useState('');
   const [documents, setDocuments] = useState([]);
@@ -259,12 +261,16 @@ export default function AdminReservations() {
   const [previewDoc, setPreviewDoc] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
 
-  const load = () => {
-    setLoading(true);
-    getReservations(filter === 'All' ? '' : filter)
+  const load = (silent = false) => {
+    if (!silent) setLoading(true);
+    getReservations()
       .then((r) => setItems(r.data.reservations || []))
-      .catch(() => setItems([]))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        if (!silent) setItems([]);
+      })
+      .finally(() => {
+        if (!silent) setLoading(false);
+      });
   };
 
   const loadDocuments = async (reservationId) => {
@@ -284,7 +290,33 @@ export default function AdminReservations() {
 
   useEffect(() => {
     load();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') load(true);
+    };
+    const interval = window.setInterval(refreshWhenVisible, 10000);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    window.addEventListener('focus', refreshWhenVisible);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      window.removeEventListener('focus', refreshWhenVisible);
+    };
   }, [filter]);
+
+  const normalizedSearch = search.trim().toLowerCase();
+  const normalizedPhoneSearch = normalizedSearch.replace(/\D/g, '');
+  const filteredItems = items.filter((reservation) => {
+    const matchesFilter = filter === 'All'
+      || (filter === 'Under Review' && ['Pending', 'Under Review'].includes(reservation.status))
+      || reservation.status === filter;
+    const matchesSearch = !normalizedSearch
+      || [reservation.fullname, reservation.email].some((value) =>
+        String(value || '').toLowerCase().includes(normalizedSearch)
+      )
+      || (normalizedPhoneSearch && String(reservation.phone || '').replace(/\D/g, '').includes(normalizedPhoneSearch));
+
+    return matchesFilter && matchesSearch;
+  });
 
   const handleAction = async (status) => {
     setActionLoading(true);
@@ -381,53 +413,85 @@ export default function AdminReservations() {
     pending: items.filter((item) => ['Pending', 'Under Review'].includes(item.status)).length,
     approved: items.filter((item) => ['Approved', 'Paid'].includes(item.status)).length,
     rejected: items.filter((item) => item.status === 'Rejected').length,
+    completed: items.filter((item) => item.status === 'Completed').length,
+    cancelled: items.filter((item) => item.status === 'Cancelled').length,
   };
 
   const canConfirmPayment = modal && modal.service_type !== 'Mass Intention' && ['Approved', 'Paid'].includes(modal.status);
 
   return (
     <DashboardLayout>
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-4 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">Total Reservations</p>
-          <div className="mt-3 flex items-end justify-between">
-            <span className="font-display text-3xl text-[#1f3342]">{stats.total}</span>
-            <span className="rounded-full bg-[#f5ead5] px-2 py-1 text-[10px] font-medium text-[#a6813f]">This month</span>
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+        <div className="flex min-h-[120px] flex-col rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-5 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
+          <p className="min-h-8 text-[10px] font-semibold uppercase leading-4 tracking-[0.16em] text-[#7a7d7f]">Total Reservations</p>
+          <div className="mt-auto flex min-h-10 items-center justify-between gap-2">
+            <span className="font-display text-3xl leading-none text-[#1f3342]">{stats.total}</span>
+            <span className="shrink-0 whitespace-nowrap rounded-full bg-[#f5ead5] px-2.5 py-1 text-[10px] font-medium leading-none text-[#a6813f]">All time</span>
           </div>
         </div>
-        <div className="rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-4 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">Pending</p>
-          <div className="mt-3 flex items-end justify-between">
-            <span className="font-display text-3xl text-[#1f3342]">{stats.pending}</span>
-            <span className="rounded-full bg-[#f5ead0] px-2 py-1 text-xs font-medium text-[#775b25]">Review</span>
+        <div className="flex min-h-[120px] flex-col rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-5 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
+          <p className="min-h-8 text-[10px] font-semibold uppercase leading-4 tracking-[0.16em] text-[#7a7d7f]">Under Review</p>
+          <div className="mt-auto flex min-h-10 items-center justify-between gap-2">
+            <span className="font-display text-3xl leading-none text-[#1f3342]">{stats.pending}</span>
+            <span className="shrink-0 whitespace-nowrap rounded-full bg-[#f5ead0] px-2.5 py-1 text-[10px] font-medium leading-none text-[#775b25]">Review</span>
           </div>
         </div>
-        <div className="rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-4 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">Approved</p>
-          <div className="mt-3 flex items-end justify-between">
-            <span className="font-display text-3xl text-[#1f3342]">{stats.approved}</span>
-            <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">Active</span>
+        <div className="flex min-h-[120px] flex-col rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-5 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
+          <p className="min-h-8 text-[10px] font-semibold uppercase leading-4 tracking-[0.16em] text-[#7a7d7f]">Approved</p>
+          <div className="mt-auto flex min-h-10 items-center justify-between gap-2">
+            <span className="font-display text-3xl leading-none text-[#1f3342]">{stats.approved}</span>
+            <span className="shrink-0 whitespace-nowrap rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-medium leading-none text-emerald-700">Active</span>
           </div>
         </div>
-        <div className="rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-4 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">Rejected</p>
-          <div className="mt-3 flex items-end justify-between">
-            <span className="font-display text-3xl text-[#1f3342]">{stats.rejected}</span>
-            <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-700">Needs</span>
+        <div className="flex min-h-[120px] flex-col rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-5 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
+          <p className="min-h-8 text-[10px] font-semibold uppercase leading-4 tracking-[0.16em] text-[#7a7d7f]">Rejected</p>
+          <div className="mt-auto flex min-h-10 items-center justify-between gap-2">
+            <span className="font-display text-3xl leading-none text-[#1f3342]">{stats.rejected}</span>
+            <span className="shrink-0 whitespace-nowrap rounded-full bg-red-100 px-2.5 py-1 text-[10px] font-medium leading-none text-red-700">Needs</span>
+          </div>
+        </div>
+        <div className="flex min-h-[120px] flex-col rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-5 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
+          <p className="min-h-8 text-[10px] font-semibold uppercase leading-4 tracking-[0.16em] text-[#7a7d7f]">Completed</p>
+          <div className="mt-auto flex min-h-10 items-center justify-between gap-2">
+            <span className="font-display text-3xl leading-none text-[#1f3342]">{stats.completed}</span>
+            <span className="shrink-0 whitespace-nowrap rounded-full bg-blue-100 px-2.5 py-1 text-[10px] font-medium leading-none text-blue-700">Done</span>
+          </div>
+        </div>
+        <div className="flex min-h-[120px] flex-col rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-5 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
+          <p className="min-h-8 text-[10px] font-semibold uppercase leading-4 tracking-[0.16em] text-[#7a7d7f]">Cancelled</p>
+          <div className="mt-auto flex min-h-10 items-center justify-between gap-2">
+            <span className="font-display text-3xl leading-none text-[#1f3342]">{stats.cancelled}</span>
+            <span className="shrink-0 whitespace-nowrap rounded-full bg-[#efede8] px-2.5 py-1 text-[10px] font-medium leading-none text-[#69665d]">Closed</span>
           </div>
         </div>
       </div>
 
-      <div className="mb-5 flex flex-col gap-3 rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">Filter status</label>
-        <select className="max-w-xs rounded-full border border-[#e7dfd2] bg-white px-4 py-2 text-xs text-[#58616a]" value={filter} onChange={(e) => setFilter(e.target.value)}>
-          <option value="All">All Status</option>
-          {STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
+      <div className="mb-5 grid gap-4 rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-4 shadow-sm sm:grid-cols-[minmax(12rem,0.8fr)_minmax(16rem,1.2fr)] sm:items-end">
+        <div>
+          <label htmlFor="reservation-status-filter" className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">Filter status</label>
+          <select id="reservation-status-filter" className="h-11 w-full rounded-md border border-[#e7dfd2] bg-white px-4 text-sm text-[#58616a] outline-none focus:border-[#b18a45] focus:ring-2 focus:ring-[#d7b57a]/20" value={filter} onChange={(e) => setFilter(e.target.value)}>
+            <option value="All">All Status</option>
+            {STATUSES.filter((status) => status !== 'Pending').map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="reservation-search" className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">Search reservations</label>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#92999d]" aria-hidden="true" />
+            <input
+              id="reservation-search"
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Name, Gmail, or phone number"
+              className="h-11 w-full rounded-md border border-[#e7dfd2] bg-white pl-10 pr-4 text-sm text-[#1f3342] outline-none placeholder:text-[#92999d] focus:border-[#b18a45] focus:ring-2 focus:ring-[#d7b57a]/20"
+            />
+          </div>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-0 shadow-sm">
@@ -446,7 +510,7 @@ export default function AdminReservations() {
                 </tr>
               </thead>
               <tbody>
-                {items.map((r) => (
+                {filteredItems.map((r) => (
                   <tr key={r.id} className="border-b border-[#eee7db] transition hover:bg-[#faf5e9]">
                     <td className="px-5 py-4">
                       <div className="font-medium text-[#273746]">{r.fullname}</div>
@@ -457,7 +521,7 @@ export default function AdminReservations() {
                       {r.reservation_date} {r.reservation_time?.slice(0, 5)}
                     </td>
                     <td className="px-5 py-4">
-                      <StatusBadge status={r.status} />
+                      <StatusBadge status={r.status === 'Pending' ? 'Under Review' : r.status} />
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex justify-end">
@@ -496,7 +560,7 @@ export default function AdminReservations() {
             </table>
           </div>
         )}
-        {!loading && items.length === 0 && <p className="px-5 py-6 text-sm text-gray-500">No reservations found.</p>}
+        {!loading && filteredItems.length === 0 && <p className="px-5 py-6 text-sm text-gray-500">{normalizedSearch ? 'No reservations match your search.' : 'No reservations found.'}</p>}
       </div>
 
       <Modal isOpen={!!modal} onClose={closeModal} title="Review Reservation" size="xl">
@@ -511,7 +575,7 @@ export default function AdminReservations() {
                     {modal.reservation_date || 'Date not provided'}{modal.reservation_time ? ` • ${modal.reservation_time.slice(0, 5)}` : ''}
                   </p>
                 </div>
-                <StatusBadge status={modal.status} />
+                <StatusBadge status={modal.status === 'Pending' ? 'Under Review' : modal.status} />
               </div>
               {modal.service_type === 'Marriage' ? (() => {
                 const presentation = marriagePresentation(modal);

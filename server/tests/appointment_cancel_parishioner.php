@@ -171,15 +171,15 @@ $cancelApproved = request('PATCH', "$base/appointments/index.php", $cookieA, [
     'status' => 'Cancelled',
 ]);
 assertTrue(
-    $cancelApproved['status'] === 200 && ($cancelApproved['body']['data']['status'] ?? '') === 'Cancelled',
-    'Approved → Cancelled by parishioner',
+    $cancelApproved['status'] === 422,
+    'Approved appointment cancellation by parishioner is rejected',
     $results
 );
 
 $afterApprovedCancel = request('GET', "$base/appointments/availability.php?date={$slot2['date']}", $cookieA);
 assertTrue(
-    in_array($slot2['time'], $afterApprovedCancel['body']['data']['available'] ?? [], true),
-    'Slot available again after Approved cancel',
+    !in_array($slot2['time'], $afterApprovedCancel['body']['data']['available'] ?? [], true),
+    'Approved appointment slot stays booked',
     $results
 );
 

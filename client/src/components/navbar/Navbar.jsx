@@ -1,5 +1,6 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
+import { ChevronRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getDashboardByRole, normalizeRole } from '../../utils/roleRedirect';
 import { useNotifications } from '../../context/NotificationContext';
@@ -276,25 +277,25 @@ export default function Navbar({ dashboard = false, isSidebarOpen = false, onSid
                     role="menu"
                     className={
                       isAdmin
-                        ? 'absolute right-0 mt-3 w-[min(22rem,calc(100vw-2rem))] max-h-[calc(100dvh-5rem)] overflow-y-auto rounded-2xl border border-[#e7dfd2] bg-[#fffdf8] text-gray-800 shadow-[0_20px_48px_rgba(83,65,34,0.16)] ring-1 ring-black/5'
+                        ? 'absolute right-0 mt-3 w-[min(20rem,calc(100vw-2rem))] max-h-[calc(100dvh-5rem)] overflow-y-auto rounded-2xl border border-[#e7dfd2] bg-[#fffdf8] text-gray-800 shadow-[0_20px_48px_rgba(83,65,34,0.16)] ring-1 ring-black/5'
                         : 'absolute right-0 mt-3 w-[min(17rem,calc(100vw-2rem))] max-h-[calc(100dvh-5rem)] overflow-y-auto rounded-2xl border border-[#e7dfd2] bg-[#fffdf8] dark:bg-gray-800 text-gray-800 dark:text-gray-100 shadow-[0_20px_48px_rgba(83,65,34,0.16)] ring-1 ring-black/5'
                     }
                   >
                     <div
                       className={
                         isAdmin
-                          ? 'border-b border-[#eee5d6] bg-[#fffdf8] px-5 py-5 text-[#273746]'
+                          ? 'border-b border-[#eee5d6] bg-[#fffdf8] px-4 py-4 text-[#273746]'
                           : 'border-b border-[#eee5d6] bg-[#fffdf8] px-4 py-4 dark:bg-gray-800'
                       }
                     >
                       {isAdmin ? (
                         <div className="flex items-center gap-3">
-                          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#b18a45] text-lg font-semibold text-white shadow-sm">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#b18a45] text-base font-semibold text-white shadow-sm">
                             {initials}
                           </div>
                           <div className="min-w-0">
-                            <p className="truncate font-display text-xl leading-tight text-[#1f3342]">{user.fullname}</p>
-                            <p className="mt-0.5 truncate text-sm text-[#8aa0ad]">Parish Staff</p>
+                            <p className="truncate font-display text-lg leading-tight text-[#1f3342]">{user.fullname}</p>
+                            <p className="mt-1 truncate text-xs text-[#7a7d7f]">Parish Staff</p>
                           </div>
                         </div>
                       ) : (
@@ -315,12 +316,13 @@ export default function Navbar({ dashboard = false, isSidebarOpen = false, onSid
                     </div>
 
                     {isAdmin ? (
-                      <div className="p-3">
-                        <Link to="/profile" role="menuitem" onClick={closeProfile} className="flex items-center gap-3 border-b border-[#eee5d6] px-3 py-3 text-base font-medium text-[#273746] transition hover:bg-[#faf5e9]">
-                          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f5ead5] text-[#a6813f]"><IconProfile className="h-5 w-5" /></span>
-                          <span className="flex-1">{t('nav.manageProfile')}</span><span className="text-2xl text-[#a6813f]">›</span>
+                      <div className="space-y-1 p-2.5">
+                        <Link to="/profile" role="menuitem" onClick={closeProfile} className="flex min-h-12 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[#273746] transition hover:bg-[#faf5e9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b18a45]/50">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#f5ead5] text-[#a6813f]"><IconProfile className="h-[18px] w-[18px]" /></span>
+                          <span className="min-w-0 flex-1">{t('nav.manageProfile')}</span>
+                          <ChevronRight className="h-4 w-4 shrink-0 text-[#a6813f]" aria-hidden="true" />
                         </Link>
-                        <div className="my-2 mx-4 border-t border-gray-100 dark:border-gray-700" />
+                        <div className="mx-3 border-t border-[#eee5d6]" />
 
                         <button
                           type="button"
@@ -329,10 +331,11 @@ export default function Navbar({ dashboard = false, isSidebarOpen = false, onSid
                             closeProfile();
                             setLogoutConfirmOpen(true);
                           }}
-                          className="w-full text-left flex items-center gap-3 px-3 py-3 text-base font-medium text-red-500 transition hover:bg-red-50"
+                          className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium text-[#b6534b] transition hover:bg-[#fff3f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c97868]/45"
                         >
-                          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50"><IconLogout className="h-5 w-5" /></span>
-                          <span className="flex-1">{t('nav.logout')}</span><span className="text-xl text-[#a6813f]">›</span>
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#fff0ed]"><IconLogout className="h-[18px] w-[18px]" /></span>
+                          <span className="min-w-0 flex-1">{t('nav.logout')}</span>
+                          <ChevronRight className="h-4 w-4 shrink-0 text-[#b6534b]" aria-hidden="true" />
                         </button>
                       </div>
                     ) : (

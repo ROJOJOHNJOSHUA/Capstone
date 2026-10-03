@@ -78,12 +78,7 @@ $bookedAll = uniqueNormalizedTimes(array_column($stmt->fetchAll(), 'appointment_
 $slotInfo = appointmentSlotsForDate($date, $bookedAll);
 $available = $slotInfo['available'];
 $booked = $slotInfo['booked'];
-
-// Only return bookable slots; fully booked and past slots are omitted from the picker.
-$slots = array_map(static fn(string $t): array => [
-    'time' => $t,
-    'status' => 'available',
-], $available);
+$slots = $slotInfo['slots'];
 
 successResponse([
     'date' => $date,

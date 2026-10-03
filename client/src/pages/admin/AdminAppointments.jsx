@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Ban, Check, Eye, MessageSquareText, SquarePen, X } from 'lucide-react';
+import { Ban, Check, Eye, MessageSquareText, Search, SquarePen, X } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Modal from '../../components/forms/Modal';
 import { APPOINTMENT_STATUSES } from '../../utils/constants';
@@ -62,22 +62,38 @@ export default function AdminAppointments() {
     });
   };
 
-  const load = () => {
-    setLoading(true);
-    return getAppointments(filter === 'All' ? '' : filter)
+  const load = (silent = false) => {
+    if (!silent) setLoading(true);
+    return getAppointments()
       .then((r) => setItems(r.data.appointments || []))
-      .catch(() => setItems([]))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        if (!silent) setItems([]);
+      })
+      .finally(() => {
+        if (!silent) setLoading(false);
+      });
   };
 
   useEffect(() => {
     load();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') load(true);
+    };
+    const interval = window.setInterval(refreshWhenVisible, 10000);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    window.addEventListener('focus', refreshWhenVisible);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      window.removeEventListener('focus', refreshWhenVisible);
+    };
   }, [filter]);
 
   const searchQuery = search.trim().toLowerCase();
-  const filteredAppointments = !searchQuery
-    ? items
-    : items.filter((a) => {
+  const filteredAppointments = items
+    .filter((appointment) => filter === 'All' || appointment.status === filter)
+    .filter((a) => {
+      if (!searchQuery) return true;
         const haystack = [
           a.fullname,
           a.email,
@@ -88,7 +104,7 @@ export default function AdminAppointments() {
           .map((v) => String(v || '').toLowerCase())
           .join(' ');
         return haystack.includes(searchQuery);
-      });
+    });
 
   const resolveRemarks = (id) => {
     if (Object.prototype.hasOwnProperty.call(remarks, id)) {
@@ -143,70 +159,79 @@ export default function AdminAppointments() {
     approved: items.filter((item) => item.status === 'Approved').length,
     completed: items.filter((item) => item.status === 'Completed').length,
     rejected: items.filter((item) => item.status === 'Rejected').length,
+    cancelled: items.filter((item) => item.status === 'Cancelled').length,
   };
 
   return (
     <DashboardLayout>
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <div className="rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-4 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">Total Appointments</p>
-          <div className="mt-3 flex items-end justify-between">
-            <span className="font-display text-3xl text-[#1f3342]">{stats.total}</span>
-            <span className="rounded-full bg-[#f1e7d1] px-2 py-1 text-xs font-medium text-[#775b25]">All</span>
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+        <div className="flex min-h-[120px] flex-col rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-5 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
+          <p className="min-h-8 text-[10px] font-semibold uppercase leading-4 tracking-[0.16em] text-[#7a7d7f]">Total Appointments</p>
+          <div className="mt-auto flex min-h-10 items-center justify-between gap-2">
+            <span className="font-display text-3xl leading-none text-[#1f3342]">{stats.total}</span>
+            <span className="shrink-0 whitespace-nowrap rounded-full bg-[#f1e7d1] px-2.5 py-1 text-[10px] font-medium leading-none text-[#775b25]">All</span>
           </div>
         </div>
-        <div className="rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-4 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">Pending</p>
-          <div className="mt-3 flex items-end justify-between">
-            <span className="font-display text-3xl text-[#1f3342]">{stats.pending}</span>
-            <span className="rounded-full bg-[#f5ead0] px-2 py-1 text-xs font-medium text-[#775b25]">Review</span>
+        <div className="flex min-h-[120px] flex-col rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-5 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
+          <p className="min-h-8 text-[10px] font-semibold uppercase leading-4 tracking-[0.16em] text-[#7a7d7f]">Under Review</p>
+          <div className="mt-auto flex min-h-10 items-center justify-between gap-2">
+            <span className="font-display text-3xl leading-none text-[#1f3342]">{stats.pending}</span>
+            <span className="shrink-0 whitespace-nowrap rounded-full bg-[#f5ead0] px-2.5 py-1 text-[10px] font-medium leading-none text-[#775b25]">Review</span>
           </div>
         </div>
-        <div className="rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-4 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">Approved</p>
-          <div className="mt-3 flex items-end justify-between">
-            <span className="font-display text-3xl text-[#1f3342]">{stats.approved}</span>
-            <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">Active</span>
+        <div className="flex min-h-[120px] flex-col rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-5 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
+          <p className="min-h-8 text-[10px] font-semibold uppercase leading-4 tracking-[0.16em] text-[#7a7d7f]">Approved</p>
+          <div className="mt-auto flex min-h-10 items-center justify-between gap-2">
+            <span className="font-display text-3xl leading-none text-[#1f3342]">{stats.approved}</span>
+            <span className="shrink-0 whitespace-nowrap rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-medium leading-none text-emerald-700">Active</span>
           </div>
         </div>
-        <div className="rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-4 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">Completed</p>
-          <div className="mt-3 flex items-end justify-between">
-            <span className="font-display text-3xl text-[#1f3342]">{stats.completed}</span>
-            <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">Done</span>
+        <div className="flex min-h-[120px] flex-col rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-5 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
+          <p className="min-h-8 text-[10px] font-semibold uppercase leading-4 tracking-[0.16em] text-[#7a7d7f]">Completed</p>
+          <div className="mt-auto flex min-h-10 items-center justify-between gap-2">
+            <span className="font-display text-3xl leading-none text-[#1f3342]">{stats.completed}</span>
+            <span className="shrink-0 whitespace-nowrap rounded-full bg-blue-100 px-2.5 py-1 text-[10px] font-medium leading-none text-blue-700">Done</span>
           </div>
         </div>
-        <div className="rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-4 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">Rejected</p>
-          <div className="mt-3 flex items-end justify-between">
-            <span className="font-display text-3xl text-[#1f3342]">{stats.rejected}</span>
-            <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-700">Needs</span>
+        <div className="flex min-h-[120px] flex-col rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-5 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
+          <p className="min-h-8 text-[10px] font-semibold uppercase leading-4 tracking-[0.16em] text-[#7a7d7f]">Rejected</p>
+          <div className="mt-auto flex min-h-10 items-center justify-between gap-2">
+            <span className="font-display text-3xl leading-none text-[#1f3342]">{stats.rejected}</span>
+            <span className="shrink-0 whitespace-nowrap rounded-full bg-red-100 px-2.5 py-1 text-[10px] font-medium leading-none text-red-700">Needs</span>
+          </div>
+        </div>
+        <div className="flex min-h-[120px] flex-col rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-5 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
+          <p className="min-h-8 text-[10px] font-semibold uppercase leading-4 tracking-[0.16em] text-[#7a7d7f]">Cancelled</p>
+          <div className="mt-auto flex min-h-10 items-center justify-between gap-2">
+            <span className="font-display text-3xl leading-none text-[#1f3342]">{stats.cancelled}</span>
+            <span className="shrink-0 whitespace-nowrap rounded-full bg-[#efede8] px-2.5 py-1 text-[10px] font-medium leading-none text-[#69665d]">Closed</span>
           </div>
         </div>
       </div>
 
-      <div className="mb-5 rounded-lg border border-[#e7dfd2] bg-[#fffdf8] p-4 shadow-sm">
-        <div className="flex flex-col gap-3 lg:flex-row">
-          <div className="flex-1">
-            <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">Filter status</label>
-            <select className="h-11 w-full max-w-xs rounded-md border border-[#e7dfd2] bg-white px-4 text-sm text-[#1f3342] outline-none focus:border-[#b18a45] focus:ring-2 focus:ring-[#d7b57a]/20" value={filter} onChange={(e) => setFilter(e.target.value)}>
-              <option value="All">All Status</option>
-              {APPOINTMENT_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {s === 'Pending' ? 'Under Review' : s}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex-1 lg:max-w-lg">
-            <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">Search</label>
+      <div className="mb-5 grid gap-4 rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-4 shadow-sm sm:grid-cols-[minmax(12rem,0.8fr)_minmax(16rem,1.2fr)] sm:items-end">
+        <div>
+          <label htmlFor="appointment-status-filter" className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">Filter status</label>
+          <select id="appointment-status-filter" className="h-11 w-full rounded-md border border-[#e7dfd2] bg-white px-4 text-sm text-[#58616a] outline-none focus:border-[#b18a45] focus:ring-2 focus:ring-[#d7b57a]/20" value={filter} onChange={(e) => setFilter(e.target.value)}>
+            <option value="All">All Status</option>
+            {APPOINTMENT_STATUSES.filter((status) => status !== 'Under Review').map((s) => (
+              <option key={s} value={s}>
+                {s === 'Pending' ? 'Under Review' : s}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="appointment-search" className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">Search appointments</label>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#92999d]" aria-hidden="true" />
             <input
+              id="appointment-search"
               type="search"
-              className="h-11 w-full rounded-md border border-[#e7dfd2] bg-white px-4 text-sm text-[#1f3342] outline-none placeholder:text-[#92999d] focus:border-[#b18a45] focus:ring-2 focus:ring-[#d7b57a]/20"
-              placeholder="Search by name, email, phone, service or date..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Name, email, phone, purpose, or date"
+              className="h-11 w-full rounded-md border border-[#e7dfd2] bg-white pl-10 pr-4 text-sm text-[#1f3342] outline-none placeholder:text-[#92999d] focus:border-[#b18a45] focus:ring-2 focus:ring-[#d7b57a]/20"
             />
           </div>
         </div>

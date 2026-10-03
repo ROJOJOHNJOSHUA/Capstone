@@ -49,7 +49,44 @@ export default function ParishCalendar() {
   const calendarViewRef = useRef(null);
 
   useEffect(() => {
-    getParishCalendar().then((response) => setEvents(response.data.events || [])).catch(() => setError('Unable to load the parish calendar right now.')).finally(() => setLoading(false));
+    let active = true;
+    let requestInFlight = false;
+    let hasLoaded = false;
+
+    const refresh = async () => {
+      if (requestInFlight) return;
+      requestInFlight = true;
+      try {
+        const response = await getParishCalendar();
+        if (active) {
+          setEvents(response.data.events || []);
+          setError('');
+        }
+      } catch {
+        if (active && !hasLoaded) {
+          setError('Unable to load the parish calendar right now.');
+        }
+      } finally {
+        requestInFlight = false;
+        hasLoaded = true;
+        if (active) setLoading(false);
+      }
+    };
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+
+    refresh();
+    const interval = window.setInterval(refreshWhenVisible, 10000);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    window.addEventListener('focus', refreshWhenVisible);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      window.removeEventListener('focus', refreshWhenVisible);
+    };
   }, []);
 
   useEffect(() => {

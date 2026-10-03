@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         errorResponse(
             'Selected date/time is not available for appointments.',
             422,
-            ['appointment_time' => 'Selected date/time is not available. Appointments are available Monday–Friday from 8:00 AM to 4:30 PM.']
+            ['appointment_time' => 'Selected date/time is not available. Appointments are available Monday and Wednesday–Sunday, 8:00–11:00 AM and 1:00–5:00 PM. The parish is closed Tuesdays.']
         );
     }
 
@@ -77,6 +77,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ['appointment_time' => 'This appointment time has already passed.']
             );
         }
+    }
+
+    $leadTimeSlots = filterAppointmentLeadTimeSlots($date, $allowedSlots);
+    if (!in_array($time, $leadTimeSlots, true)) {
+        errorResponse(
+            'Appointments must be booked at least two hours in advance.',
+            422,
+            ['appointment_time' => 'Choose an appointment time at least two hours from now (Philippine Time).']
+        );
     }
 
     $check = $db->prepare(
@@ -171,7 +180,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
         errorResponse('Appointment not found.', 404);
     }
 
-    // Parishioners may only cancel their own Pending/Approved appointments.
+    // Parishioners may only cancel their own Pending appointments.
     // Admins retain full status-update workflow.
     if (!$isAdmin) {
         if ((int) $existing['user_id'] !== (int) $auth['user_id']) {
@@ -180,8 +189,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
         if ($status !== 'Cancelled') {
             errorResponse('Parishioners can only cancel appointments.', 403);
         }
-        if (!in_array((string) $existing['status'], ['Pending', 'Approved'], true)) {
-            errorResponse('This appointment cannot be cancelled.', 422);
+        if ((string) $existing['status'] !== 'Pending') {
+            errorResponse('Only pending appointments can be cancelled by parishioners.', 422);
         }
     }
 
@@ -217,7 +226,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     }
 
     $cancelGuard = !$isAdmin && $status === 'Cancelled'
-        ? " AND status IN ('Pending', 'Approved')"
+        ? " AND status = 'Pending'"
         : '';
     $upd = $db->prepare(
         "UPDATE appointments

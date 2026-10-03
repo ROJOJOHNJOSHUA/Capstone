@@ -70,6 +70,21 @@ function filterPastAppointmentSlots(string $date, array $slots): array
     }));
 }
 
+/**
+ * Keep appointment slots bookable only when they start at least two hours from now.
+ *
+ * @param array<int, string> $slots Times in HH:MM:SS
+ * @return array<int, string>
+ */
+function filterAppointmentLeadTimeSlots(string $date, array $slots): array
+{
+    $cutoff = parishNow()->modify('+2 hours');
+    return array_values(array_filter($slots, static function (string $slot) use ($date, $cutoff): bool {
+        $slotAt = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', "$date $slot", parishTimezone());
+        return $slotAt !== false && $slotAt >= $cutoff;
+    }));
+}
+
 function isAtLeastDaysAhead(string $date, int $days): bool
 {
     $d = parseIsoDate($date);
@@ -193,8 +208,8 @@ function reservationDateAvailability(string $serviceType, string $date, array $b
 /**
  * Holy Family Parish — parish office appointment schedule.
  * 
- * Office hours: Monday and Wednesday to Saturday, 8:00 AM to 5:00 PM
- * Closed: Tuesday and Sunday; lunch break: 11:00 AM to 1:00 PM
+ * Office hours: Monday and Wednesday to Sunday, 8:00 AM to 5:00 PM
+ * Closed: Tuesday; lunch break: 11:00 AM to 1:00 PM
  * Time slots: 30-minute intervals during the morning and afternoon windows
  */
 function allowedAppointmentSlots(string $date): array
@@ -205,8 +220,8 @@ function allowedAppointmentSlots(string $date): array
     }
     $dow = (int) $d->format('w'); // 0=Sun ... 6=Sat
 
-    // Closed on Tuesday and Sunday
-    if ($dow === 0 || $dow === 2) {
+    // Closed on Tuesday
+    if ($dow === 2) {
         return [];
     }
 
@@ -236,12 +251,31 @@ function allowedAppointmentSlots(string $date): array
  */
 function appointmentSlotsForDate(string $date, array $bookedTimes = []): array
 {
-    $allowedSlots = filterPastAppointmentSlots($date, allowedAppointmentSlots($date));
-    $booked = array_values(array_intersect($allowedSlots, uniqueNormalizedTimes($bookedTimes)));
-    $available = array_values(array_diff($allowedSlots, $booked));
+    $allowedSlots = allowedAppointmentSlots($date);
+    $bookedLookup = array_fill_keys(uniqueNormalizedTimes($bookedTimes), true);
+    $now = parishNow();
+    $cutoff = $now->modify('+2 hours');
+    $slots = [];
+
+    foreach ($allowedSlots as $time) {
+        $slotAt = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', "$date $time", parishTimezone());
+        if (isset($bookedLookup[$time])) {
+            $status = 'booked';
+        } elseif ($slotAt === false || $slotAt <= $now) {
+            $status = 'past';
+        } elseif ($slotAt < $cutoff) {
+            $status = 'too_soon';
+        } else {
+            $status = 'available';
+        }
+        $slots[] = ['time' => $time, 'status' => $status];
+    }
+
+    $available = array_column(array_values(array_filter($slots, static fn(array $slot): bool => $slot['status'] === 'available')), 'time');
+    $booked = array_column(array_values(array_filter($slots, static fn(array $slot): bool => $slot['status'] === 'booked')), 'time');
 
     return [
-        'slots' => $available,
+        'slots' => $slots,
         'available' => $available,
         'booked' => $booked,
     ];
@@ -259,7 +293,7 @@ function appointmentDateAvailability(string $date, array $bookedTimes = []): arr
     }
 
     $dow = (int) $d->format('w'); // 0=Sun ... 6=Sat
-    if ($dow === 0 || $dow === 6) {
+    if ($dow === 2) {
         return ['status' => 'unavailable', 'available_count' => 0, 'total_slots' => 0];
     }
 
@@ -269,16 +303,22 @@ function appointmentDateAvailability(string $date, array $bookedTimes = []): arr
     }
 
     $slotInfo = appointmentSlotsForDate($date, $bookedTimes);
-    $allowedSlots = filterPastAppointmentSlots($date, allowedAppointmentSlots($date));
-    if ($allowedSlots === []) {
+    if ($slotInfo['slots'] === []) {
         return ['status' => 'unavailable', 'available_count' => 0, 'total_slots' => 0];
     }
 
-    $available = $slotInfo['available'];
+    $hasViewableFutureSlot = count(array_filter(
+        $slotInfo['slots'],
+        static fn(array $slot): bool => in_array($slot['status'], ['available', 'too_soon'], true)
+    )) > 0;
+    $hasUnbookedSlot = count(array_filter(
+        $slotInfo['slots'],
+        static fn(array $slot): bool => $slot['status'] !== 'booked'
+    )) > 0;
 
     return [
-        'status' => empty($available) ? 'full' : 'available',
-        'available_count' => count($available),
-        'total_slots' => count($allowedSlots),
+        'status' => $hasViewableFutureSlot ? 'available' : ($hasUnbookedSlot ? 'unavailable' : 'full'),
+        'available_count' => count($slotInfo['available']),
+        'total_slots' => count($slotInfo['slots']),
     ];
 }

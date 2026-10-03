@@ -59,18 +59,20 @@ foreach ($lockNames as $lockName) {
 }
 
 try {
-    $check = $db->query("SELECT fullname, phone, email FROM users WHERE role = 'user'");
+    $check = $db->query('SELECT fullname, phone, email, role FROM users');
 } catch (Throwable $error) {
     error_log('Registration duplicate check failed: ' . $error->getMessage());
     errorResponse('Registration service is temporarily unavailable. Please try again later.', 503);
 }
 $duplicateErrors = [];
 foreach ($check->fetchAll() as $existing) {
-    if (normalizeRegistrationName($existing['fullname']) === normalizeRegistrationName($fullname)) {
-        $duplicateErrors['fullname'] = 'Name is already used.';
-    }
-    if (normalizeRegistrationPhone($existing['phone']) === normalizeRegistrationPhone($phone)) {
-        $duplicateErrors['phone'] = 'Phone number is already used.';
+    if ($existing['role'] === 'user') {
+        if (normalizeRegistrationName($existing['fullname']) === normalizeRegistrationName($fullname)) {
+            $duplicateErrors['fullname'] = 'Name is already used.';
+        }
+        if (normalizeRegistrationPhone($existing['phone']) === normalizeRegistrationPhone($phone)) {
+            $duplicateErrors['phone'] = 'Phone number is already used.';
+        }
     }
     if (strtolower(trim((string) $existing['email'])) === $email) {
         $duplicateErrors['email'] = 'This email is already registered.';

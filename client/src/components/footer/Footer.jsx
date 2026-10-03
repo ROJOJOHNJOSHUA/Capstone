@@ -15,9 +15,7 @@ const EXPLORE_LINKS = [
 ];
 
 const PORTAL_LINKS = [
-  { label: 'Create Account', to: '/register' },
   { label: 'Sign In', to: '/login' },
-  { label: 'Reservations', to: '/reservations' },
 ];
 
 function FooterLink({ to, children }) {
@@ -162,11 +160,9 @@ export default function Footer() {
                   <FooterNavLink
                     to={link.to}
                     onClick={
-                      link.label === 'Create Account'
-                        ? () => setRegisterOpen(true)
-                        : link.label === 'Sign In'
-                          ? () => setLoginOpen(true)
-                          : undefined
+                      link.label === 'Sign In'
+                        ? () => setLoginOpen(true)
+                        : undefined
                     }
                   >
                     {link.label}

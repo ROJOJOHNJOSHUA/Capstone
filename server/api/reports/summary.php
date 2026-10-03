@@ -24,14 +24,20 @@ $category = $_GET['category'] ?? 'all';
 
 $where = 'WHERE 1=1';
 $params = [];
+$chartWhere = 'WHERE YEAR(created_at) = ?';
+$chartParams = [$year];
 
 if ($from !== '') {
     $where .= ' AND DATE(created_at) >= ?';
     $params[] = $from;
+    $chartWhere .= ' AND DATE(created_at) >= ?';
+    $chartParams[] = $from;
 }
 if ($to !== '') {
     $where .= ' AND DATE(created_at) <= ?';
     $params[] = $to;
+    $chartWhere .= ' AND DATE(created_at) <= ?';
+    $chartParams[] = $to;
 }
 
 switch ($period) {
@@ -77,16 +83,16 @@ $summary = [
 
 $reservations_chart = $db->prepare(
     "SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, COUNT(*) AS count
-     FROM reservations $where GROUP BY month ORDER BY month DESC LIMIT 12"
+    FROM reservations $chartWhere GROUP BY month ORDER BY month DESC LIMIT 12"
 );
-$reservations_chart->execute($params);
+$reservations_chart->execute($chartParams);
 $reservations_chart_data = array_reverse($reservations_chart->fetchAll());
 
 $appointments_chart = $db->prepare(
     "SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, COUNT(*) AS count
-     FROM appointments $where GROUP BY month ORDER BY month DESC LIMIT 12"
+    FROM appointments $chartWhere GROUP BY month ORDER BY month DESC LIMIT 12"
 );
-$appointments_chart->execute($params);
+$appointments_chart->execute($chartParams);
 $appointments_chart_data = array_reverse($appointments_chart->fetchAll());
 
 $users_by_role = $db->query(

@@ -31,6 +31,7 @@ function countAdmins(PDO $db): int
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $search = trim($_GET['search'] ?? '');
     $role = trim($_GET['role'] ?? '');
+    $fetchAll = ($_GET['all'] ?? '') === '1';
     $page = max(1, (int) ($_GET['page'] ?? 1));
     $limit = min(100, max(1, (int) ($_GET['limit'] ?? 20)));
     $offset = ($page - 1) * $limit;
@@ -57,7 +58,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     // LIMIT/OFFSET must be integers in SQL — MySQL native prepared statements reject bound LIMIT params.
     $sql = "SELECT id, fullname, email, phone, address, role, created_at
-            FROM users $where ORDER BY fullname ASC LIMIT $limit OFFSET $offset";
+            FROM users $where ORDER BY fullname ASC";
+    if (!$fetchAll) {
+        $sql .= " LIMIT $limit OFFSET $offset";
+    }
     $stmt = $db->prepare($sql);
     $stmt->execute($params);
     $users = array_map('formatUser', $stmt->fetchAll());
@@ -66,9 +70,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         'users' => $users,
         'pagination' => [
             'page' => $page,
-            'limit' => $limit,
+            'limit' => $fetchAll ? $total : $limit,
             'total' => $total,
-            'pages' => $total > 0 ? (int) ceil($total / $limit) : 0,
+            'pages' => $fetchAll ? ($total > 0 ? 1 : 0) : ($total > 0 ? (int) ceil($total / $limit) : 0),
         ],
     ]);
 }

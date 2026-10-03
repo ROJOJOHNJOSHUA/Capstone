@@ -108,7 +108,7 @@ function getCalendarDateTitle(iso, status, todayIso) {
     return 'Fully Booked';
   }
   const dayOfWeek = new Date(`${iso}T12:00:00`).getDay();
-  if (dayOfWeek === 0 || dayOfWeek === 2) {
+  if (dayOfWeek === 2) {
     return 'Closed';
   }
   if (iso === todayIso && status === 'unavailable') {
@@ -183,14 +183,31 @@ export default function Appointment() {
     }
   }, [searchParams]);
 
-  const load = () => {
-    getAppointments()
+  const load = (silent = false) => {
+    if (!silent) setLoading(true);
+    return getAppointments()
       .then((r) => setAppointments(r.data.appointments || []))
-      .finally(() => setLoading(false));
+      .catch((loadError) => {
+        if (!silent) setError(loadError.message || 'Unable to load appointments.');
+      })
+      .finally(() => {
+        if (!silent) setLoading(false);
+      });
   };
 
   useEffect(() => {
     load();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') load(true);
+    };
+    const interval = window.setInterval(refreshWhenVisible, 10000);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    window.addEventListener('focus', refreshWhenVisible);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      window.removeEventListener('focus', refreshWhenVisible);
+    };
   }, []);
 
   useEffect(() => {
@@ -204,23 +221,21 @@ export default function Appointment() {
     }
 
     setLoadingSlots(true);
-    checkAppointmentAvailability(selectedDate)
+    const refreshSlots = () => checkAppointmentAvailability(selectedDate)
       .then((r) => {
         if (cancelled) return;
         const available = r.data.available || [];
-        const slotList = (r.data.slots || []).filter((slot) => slot.status === 'available');
-        setSlotItems(
-          slotList.length > 0
-            ? slotList
-            : available.map((time) => ({ time, status: 'available' }))
-        );
+        const slotList = r.data.slots || available.map((time) => ({ time, status: 'available' }));
+        setSlotItems(slotList);
 
         setDateStatuses((prev) => {
           const totalSlots = slotList.length;
           const availableCount = available.length;
+          const viewableCount = slotList.filter((slot) => ['available', 'too_soon'].includes(slot.status)).length;
           let status = prev[selectedDate]?.status;
           if (totalSlots > 0) {
-            status = availableCount === 0 ? 'full' : 'available';
+            const fullyBooked = slotList.every((slot) => slot.status === 'booked');
+            status = viewableCount > 0 ? 'available' : fullyBooked ? 'full' : 'unavailable';
           } else if (status === 'available' || status === 'full') {
             // Day endpoint returned no slots (weekend/past) — keep monthly status
             return prev;
@@ -244,8 +259,11 @@ export default function Appointment() {
         if (!cancelled) setLoadingSlots(false);
       });
 
+    refreshSlots();
+    const interval = window.setInterval(refreshSlots, 60000);
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
     };
   }, [form.appointment_date]);
 
@@ -330,18 +348,16 @@ export default function Appointment() {
     return checkAppointmentAvailability(selectedDate)
       .then((r) => {
         const available = r.data.available || [];
-        const slotList = (r.data.slots || []).filter((slot) => slot.status === 'available');
-        setSlotItems(
-          slotList.length > 0
-            ? slotList
-            : available.map((time) => ({ time, status: 'available' }))
-        );
+        const slotList = r.data.slots || available.map((time) => ({ time, status: 'available' }));
+        setSlotItems(slotList);
         setDateStatuses((prev) => {
           const totalSlots = slotList.length;
           const availableCount = available.length;
+          const viewableCount = slotList.filter((slot) => ['available', 'too_soon'].includes(slot.status)).length;
           let status = prev[selectedDate]?.status;
           if (totalSlots > 0) {
-            status = availableCount === 0 ? 'full' : 'available';
+            const fullyBooked = slotList.every((slot) => slot.status === 'booked');
+            status = viewableCount > 0 ? 'available' : fullyBooked ? 'full' : 'unavailable';
           }
           if (!status) return prev;
           return {
@@ -384,7 +400,7 @@ export default function Appointment() {
       setShowForm(false);
       setCurrentStep(0);
       setForm({ appointment_date: '', appointment_time: '', purpose: '', custom_purpose: '', fullname: user?.fullname || '', email: user?.email || '', phone: user?.phone || '', address: user?.address || '' });
-      load();
+      await load(true);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -393,7 +409,7 @@ export default function Appointment() {
     }
   };
 
-  const canCancelAppointment = (status) => status === 'Pending' || status === 'Approved';
+  const canCancelAppointment = (status) => status === 'Pending';
 
   const handleCancelAppointment = async (appointment) => {
     if (!canCancelAppointment(appointment.status)) return;
@@ -469,11 +485,11 @@ export default function Appointment() {
             ))}
           </div>
           <p className="text-sm text-gray-600">
-            <strong>Office hours:</strong> Monday and Wednesday–Saturday
+                            <strong>Office hours:</strong> Monday and Wednesday–Sunday
             <br />
             Available appointment slots: 8:00–11:00 AM and 1:00–5:00 PM (30-minute intervals)
             <br />
-            Tuesday and Sunday are closed. Green dates have open slots; red dates are fully booked.
+            The parish is closed Tuesdays. Green dates have viewable slots; red dates are fully booked.
           </p>
           {error && <div className="bg-red-50 text-red-700 p-3 rounded text-sm">{error}</div>}
           {currentStep === 0 && (
@@ -620,19 +636,30 @@ export default function Appointment() {
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                           {periodSlots.map((slot) => {
                       const isSelected = form.appointment_time === slot.time;
+                      const isAvailable = slot.status === 'available';
+                      const isBooked = slot.status === 'booked';
                       return (
                         <button
                           key={slot.time}
                           type="button"
-                          className={`w-full px-4 py-3 rounded-lg border text-sm font-medium transition text-left bg-green-50 border-green-300 text-green-800 hover:bg-green-100 ${
-                            isSelected ? 'ring-2 ring-green-500' : ''
+                          disabled={!isAvailable}
+                          className={`w-full px-4 py-3 rounded-lg border text-sm font-medium transition text-left ${
+                            isAvailable
+                              ? 'bg-green-50 border-green-300 text-green-800 hover:bg-green-100'
+                              : isBooked
+                                ? 'cursor-not-allowed bg-red-50 border-red-300 text-red-800'
+                                : 'cursor-not-allowed bg-gray-100 border-gray-300 text-gray-500'
+                          } ${
+                            isSelected && isAvailable ? 'ring-2 ring-green-500' : ''
                           }`}
-                          onClick={() => setForm({ ...form, appointment_time: slot.time })}
+                          onClick={() => {
+                            if (isAvailable) setForm({ ...form, appointment_time: slot.time });
+                          }}
                         >
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-base">{formatSlotTime(slot.time)}</span>
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-green-200 text-green-900">
-                              Available
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${isAvailable ? 'bg-green-200 text-green-900' : isBooked ? 'bg-red-200 text-red-900' : 'bg-gray-200 text-gray-700'}`}>
+                              {isAvailable ? 'Available' : isBooked ? 'Booked' : 'Not available'}
                             </span>
                           </div>
                         </button>
@@ -773,7 +800,7 @@ export default function Appointment() {
             </div>
             <div className="rounded-xl border border-[#f1e9da] p-3 text-[#5b5344]">
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9a8666]">Office hours</p>
-              <p className="mt-1">Monday and Wednesday–Saturday, 8:00–11:00 AM and 1:00–5:00 PM. Please bring a valid ID and any supporting documents for your request.</p>
+              <p className="mt-1">Monday and Wednesday–Sunday, 8:00–11:00 AM and 1:00–5:00 PM. The parish is closed Tuesdays. Please bring a valid ID and any supporting documents for your request.</p>
             </div>
           </div>
         )}

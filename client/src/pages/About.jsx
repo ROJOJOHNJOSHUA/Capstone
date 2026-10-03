@@ -217,12 +217,12 @@ export default function About() {
           </div>
           <div className="mt-5 grid items-stretch gap-4 sm:grid-cols-2">
             <article className="min-h-[190px] rounded-xl border border-[#e6ddcf] bg-white p-6 text-center shadow-sm sm:p-8">
-              <h2 className="mt-1 font-display text-xl text-[#273746] sm:text-2xl">MISSION</h2>
-              <p className="mx-auto mt-3 max-w-xl text-xs font-semibold uppercase leading-7 tracking-[0.16em] text-[#6e7274] sm:text-sm sm:leading-8">Our mission is to spread the Gospel of Jesus Christ, strengthen the faith of our community, and serve others with compassion, love, and dedication.</p>
+              <h2 className="mt-1 font-display text-xl text-[#273746] sm:text-2xl">Mission</h2>
+              <p className="mx-auto mt-3 max-w-xl text-xs font-semibold leading-7 text-[#6e7274] sm:text-sm sm:leading-8">Our mission is to spread the Gospel of Jesus Christ, strengthen the faith of our community, and serve others with compassion, love, and dedication.</p>
             </article>
             <article className="min-h-[190px] rounded-xl border border-[#e6ddcf] bg-white p-6 text-center shadow-sm sm:p-8">
-              <h2 className="mt-1 font-display text-xl text-[#273746] sm:text-2xl">VISION</h2>
-              <p className="mx-auto mt-3 max-w-xl text-xs font-semibold uppercase leading-7 tracking-[0.16em] text-[#6e7274] sm:text-sm sm:leading-8">We envision a united Catholic community where every person grows in faith, actively participates in parish life, and serves others with love and compassion.</p>
+              <h2 className="mt-1 font-display text-xl text-[#273746] sm:text-2xl">Vision</h2>
+              <p className="mx-auto mt-3 max-w-xl text-xs font-semibold leading-7 text-[#6e7274] sm:text-sm sm:leading-8">We envision a united Catholic community where every person grows in faith, actively participates in parish life, and serves others with love and compassion.</p>
             </article>
           </div>
           <div className="mt-8 rounded-xl border border-[#e6ddcf] bg-white p-5 shadow-sm sm:p-7"><p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#b18a45]">Weekly liturgy</p><h2 className="mt-1 font-display text-2xl text-[#273746]">Parish Mass Schedule</h2><div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-7">{schedule.map(([day, time]) => <div key={day} className={`rounded-lg border p-3 ${day === 'Sunday' ? 'border-[#b18a45] bg-[#d7b57a] text-[#273746]' : time === 'Closed' ? 'border-gray-200 bg-gray-100 text-gray-400' : 'border-[#e6ddcf] bg-[#faf8f1] text-[#273746]'}`}><p className="text-[9px] font-bold uppercase tracking-wider">{day}</p><p className="mt-2 text-xs font-bold">{time}</p></div>)}</div></div>

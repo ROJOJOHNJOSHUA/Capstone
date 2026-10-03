@@ -16,7 +16,7 @@ export default function Register() {
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const { register } = useAuth();
+  const { register, user } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
@@ -44,7 +44,7 @@ export default function Register() {
         password: form.password,
         confirm_password: form.confirm,
       });
-      navigate('/', { replace: true, state: { registered: true } });
+      navigate(user ? '/login' : '/', { replace: true, state: { registered: true } });
     } catch (err) {
       setError(err.message || 'Registration failed.');
       if (err.errors) setFieldErrors(err.errors);

@@ -17,8 +17,6 @@ const EMPTY_FORM = {
   password: '',
 };
 
-const PAGE_SIZE = 15;
-
 function formatApiError(err, fallback) {
   if (err?.errors && typeof err.errors === 'object') {
     const messages = Object.values(err.errors).filter(Boolean);
@@ -30,10 +28,8 @@ function formatApiError(err, fallback) {
 export default function AdminUsers() {
   const { t } = useSettings();
   const [users, setUsers] = useState([]);
-  const [pagination, setPagination] = useState({ page: 1, pages: 0, total: 0 });
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
-  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -42,26 +38,37 @@ export default function AdminUsers() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const params = { page, limit: PAGE_SIZE };
-      if (search.trim()) params.search = search.trim();
-      if (roleFilter) params.role = roleFilter;
-      const res = await getUsers(params);
-      setUsers(res.data?.users || []);
-      setPagination(res.data?.pagination || { page: 1, pages: 0, total: 0 });
-    } catch (err) {
-      setError(formatApiError(err, t('common.error')));
-      setUsers([]);
-    } finally {
-      setLoading(false);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+      setError('');
     }
-  }, [page, roleFilter, search, t]);
+    try {
+      const res = await getUsers({ all: 1 });
+      setUsers(res.data?.users || []);
+    } catch (err) {
+      if (!silent) {
+        setError(formatApiError(err, t('common.error')));
+        setUsers([]);
+      }
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, [t]);
 
   useEffect(() => {
     load();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') load(true);
+    };
+    const interval = window.setInterval(refreshWhenVisible, 10000);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    window.addEventListener('focus', refreshWhenVisible);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      window.removeEventListener('focus', refreshWhenVisible);
+    };
   }, [load]);
 
   useEffect(() => {
@@ -124,12 +131,6 @@ export default function AdminUsers() {
     setError('');
   };
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    setPage(1);
-    load();
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -170,11 +171,7 @@ export default function AdminUsers() {
     try {
       await deleteUser(user.id);
       flash(t('users.deleted'));
-      if (users.length === 1 && page > 1) {
-        setPage((p) => p - 1);
-      } else {
-        load();
-      }
+      load();
     } catch (err) {
       setError(formatApiError(err, t('common.error')));
     }
@@ -183,6 +180,13 @@ export default function AdminUsers() {
   const roleLabel = (role) =>
     role === 'admin' ? t('users.roleAdmin') : t('users.roleUser');
 
+  const searchTerm = search.trim().toLowerCase();
+  const visibleUsers = users.filter((user) => {
+    const matchesRole = !roleFilter || user.role === roleFilter;
+    const matchesSearch = !searchTerm || [user.fullname, user.email, user.phone]
+      .some((value) => String(value || '').toLowerCase().includes(searchTerm));
+    return matchesRole && matchesSearch;
+  });
   const adminCount = users.filter((user) => user.role === 'admin').length;
   const parishionerCount = users.filter((user) => user.role === 'user').length;
 
@@ -192,7 +196,7 @@ export default function AdminUsers() {
         <div className="rounded-xl border border-[#d7b57a] bg-[#fffdf8] p-4 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">Total Users</p>
           <div className="mt-3 flex items-end justify-between">
-            <span className="font-display text-3xl text-[#1f3342]">{pagination.total || users.length}</span>
+            <span className="font-display text-3xl text-[#1f3342]">{users.length}</span>
             <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">Live</span>
           </div>
         </div>
@@ -215,7 +219,7 @@ export default function AdminUsers() {
       {message && <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 shadow-sm">{message}</div>}
       {error && !modalOpen && <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">{error}</div>}
 
-      <form onSubmit={handleSearch} className="mb-6 grid items-end gap-3 rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-[1.6fr_0.9fr_auto_auto]">
+      <div className="mb-6 grid items-end gap-3 rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-[1.6fr_0.9fr_auto]">
         <input
           className="w-full rounded-full border border-[#e7dfd2] bg-white px-3.5 py-2.5 text-xs text-[#58616a] outline-none focus:border-[#b18a45] focus:ring-2 focus:ring-[#d7b57a]/20 lg:col-span-1"
           placeholder={t('users.searchPlaceholder')}
@@ -228,29 +232,25 @@ export default function AdminUsers() {
           aria-label={t('users.filterRole')}
           onChange={(e) => {
             setRoleFilter(e.target.value);
-            setPage(1);
           }}
         >
           <option value="">{t('users.roleAll')}</option>
           <option value="user">{t('users.roleUser')}</option>
           <option value="admin">{t('users.roleAdmin')}</option>
         </select>
-        <button type="submit" className="w-full rounded-full bg-[#b18a45] px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-[#967338] lg:w-auto">
-          {t('common.search')}
-        </button>
         <button type="button" className="w-full rounded-full border border-[#b18a45] bg-white px-5 py-2.5 text-xs font-semibold text-[#a6813f] transition hover:bg-[#f5ead5] lg:w-auto" onClick={openCreate}>
           + {t('users.addUser')}
         </button>
-      </form>
+      </div>
 
       {loading ? (
         <LoadingSpinner />
       ) : (
         <>
-          <div className="overflow-hidden rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-0 shadow-sm">
-            <div className="overflow-x-auto">
+          <div className="max-h-[min(68vh,760px)] min-h-[280px] overflow-auto rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-0 shadow-sm">
+            <div>
               <table className="w-full min-w-[900px] text-sm">
-                <thead className="bg-[#f8f4ec]">
+                <thead className="sticky top-0 z-10 bg-[#f8f4ec]">
                   <tr className="border-b border-[#e7dfd2] text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">
                     <th className="px-5 py-3">{t('profile.fullName')}</th>
                     <th className="px-5 py-3">{t('profile.email')}</th>
@@ -261,7 +261,7 @@ export default function AdminUsers() {
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((user) => (
+                  {visibleUsers.map((user) => (
                     <tr key={user.id} className="border-b border-[#eee7db] transition hover:bg-[#faf5e9]">
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
@@ -306,34 +306,10 @@ export default function AdminUsers() {
                 </tbody>
               </table>
             </div>
-            {users.length === 0 && (
-              <p className="py-8 text-center text-sm text-gray-500">{t('users.noUsers')}</p>
+            {visibleUsers.length === 0 && (
+              <p className="py-8 text-center text-sm text-gray-500">{users.length ? 'No users match your filters.' : t('users.noUsers')}</p>
             )}
           </div>
-
-          {pagination.pages > 1 && (
-            <div className="mt-5 flex items-center justify-center gap-3">
-              <button
-                type="button"
-                className="btn-outline text-sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                ←
-              </button>
-              <span className="text-sm text-gray-600">
-                {t('users.page')} {pagination.page} {t('users.of')} {pagination.pages}
-              </span>
-              <button
-                type="button"
-                className="btn-outline text-sm"
-                disabled={page >= pagination.pages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                →
-              </button>
-            </div>
-          )}
         </>
       )}
 
