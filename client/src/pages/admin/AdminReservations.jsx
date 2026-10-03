@@ -593,7 +593,7 @@ export default function AdminReservations() {
                             Review
                           </button>
                         )}
-                        {r.status === 'Approved' && (
+                        {r.status === 'Approved' && r.service_type !== 'Mass Intention' && (
                           <button
                             ref={openActionMenu?.reservation.id === r.id ? actionTriggerRef : null}
                             type="button"
@@ -973,20 +973,22 @@ export default function AdminReservations() {
             </button>
           )}
           {openActionMenu.reservation.service_type !== 'Mass Intention' && <div className="my-1 border-t border-[#eee7db]" />}
-          <button
-            type="button"
-            role="menuitem"
-            disabled={actionLoading}
-            onClick={() => {
-              const reservation = openActionMenu.reservation;
-              setOpenActionMenu(null);
-              handleQuickStatus(reservation, 'Cancelled');
-            }}
-            className="flex min-h-10 w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-[#b6534b] transition hover:bg-[#fff3f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c97868]/40 disabled:opacity-50"
-          >
-            <X className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span>Cancel reservation</span>
-          </button>
+          {openActionMenu.reservation.service_type !== 'Mass Intention' && (
+            <button
+              type="button"
+              role="menuitem"
+              disabled={actionLoading}
+              onClick={() => {
+                const reservation = openActionMenu.reservation;
+                setOpenActionMenu(null);
+                handleQuickStatus(reservation, 'Cancelled');
+              }}
+              className="flex min-h-10 w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-[#b6534b] transition hover:bg-[#fff3f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c97868]/40 disabled:opacity-50"
+            >
+              <X className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>Cancel reservation</span>
+            </button>
+          )}
         </div>,
         document.body,
       )}
