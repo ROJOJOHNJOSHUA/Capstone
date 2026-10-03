@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Search } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { BadgeCheck, Search, SquarePen, X } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import StatusBadge from '../../components/cards/StatusBadge';
 import Modal from '../../components/forms/Modal';
@@ -258,8 +259,11 @@ export default function AdminReservations() {
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [openActionMenu, setOpenActionMenu] = useState(null);
   const [previewDoc, setPreviewDoc] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
+  const actionTriggerRef = useRef(null);
+  const actionMenuRef = useRef(null);
 
   const load = (silent = false) => {
     if (!silent) setLoading(true);
@@ -303,6 +307,28 @@ export default function AdminReservations() {
     };
   }, [filter]);
 
+  useEffect(() => {
+    if (!openActionMenu) return undefined;
+    const closeOnOutsideClick = (event) => {
+      if (actionMenuRef.current?.contains(event.target) || actionTriggerRef.current?.contains(event.target)) return;
+      setOpenActionMenu(null);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setOpenActionMenu(null);
+    };
+    const closeOnViewportChange = () => setOpenActionMenu(null);
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    window.addEventListener('scroll', closeOnViewportChange, true);
+    window.addEventListener('resize', closeOnViewportChange);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+      window.removeEventListener('scroll', closeOnViewportChange, true);
+      window.removeEventListener('resize', closeOnViewportChange);
+    };
+  }, [openActionMenu]);
+
   const normalizedSearch = search.trim().toLowerCase();
   const normalizedPhoneSearch = normalizedSearch.replace(/\D/g, '');
   const filteredItems = items.filter((reservation) => {
@@ -335,6 +361,39 @@ export default function AdminReservations() {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const handleQuickStatus = async (reservation, status) => {
+    if (status === 'Cancelled' && !window.confirm(`Cancel this ${reservation.service_type} reservation for ${reservation.fullname}?`)) {
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      await updateReservation({ id: reservation.id, status });
+      load(true);
+    } catch (err) {
+      alert(err.message || 'Failed to update reservation');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const toggleQuickActions = (event, reservation) => {
+    if (openActionMenu?.reservation.id === reservation.id) {
+      setOpenActionMenu(null);
+      return;
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const menuWidth = 208;
+    const menuHeight = reservation.service_type === 'Mass Intention' ? 56 : 104;
+    const top = rect.bottom + menuHeight + 8 <= window.innerHeight
+      ? rect.bottom + 8
+      : Math.max(8, rect.top - menuHeight - 8);
+    const left = Math.max(8, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 8));
+
+    setOpenActionMenu({ reservation, position: { top, left } });
   };
 
   const handleDocumentAction = async (documentId, status, remarksText = '') => {
@@ -534,13 +593,20 @@ export default function AdminReservations() {
                             Review
                           </button>
                         )}
-                        {r.service_type !== 'Mass Intention' && r.status === 'Approved' && (
+                        {r.status === 'Approved' && (
                           <button
+                            ref={openActionMenu?.reservation.id === r.id ? actionTriggerRef : null}
                             type="button"
-                            className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-600 hover:text-white"
-                            onClick={() => updateReservation({ id: r.id, status: 'Paid' }).then(load)}
+                            aria-label={`Reservation actions for ${r.service_type} from ${r.fullname}`}
+                            aria-haspopup="menu"
+                            aria-expanded={openActionMenu?.reservation.id === r.id}
+                            aria-controls={`reservation-actions-${r.id}`}
+                            title="Reservation actions"
+                            disabled={actionLoading}
+                            onClick={(event) => toggleQuickActions(event, r)}
+                            className="rounded-md p-2 text-[#7a7d7f] transition hover:bg-[#f1e7d1] hover:text-[#8a6b34] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b18a45]/50 disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            Mark as Paid
+                            <SquarePen className="h-4 w-4" aria-hidden="true" />
                           </button>
                         )}
                         {(r.service_type === 'Mass Intention' && r.status === 'Approved') || (r.service_type !== 'Mass Intention' && r.status === 'Paid') ? (
@@ -881,6 +947,49 @@ export default function AdminReservations() {
         title={previewDoc?.document_name || 'Image Preview'}
         onClose={closePreview}
       />
+      {openActionMenu && createPortal(
+        <div
+          id={`reservation-actions-${openActionMenu.reservation.id}`}
+          ref={actionMenuRef}
+          role="menu"
+          aria-label="Reservation actions"
+          className="fixed z-[1000] w-52 rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-1.5 text-left shadow-[0_14px_32px_rgba(39,55,70,0.18)] ring-1 ring-black/5"
+          style={openActionMenu.position}
+        >
+          {openActionMenu.reservation.service_type !== 'Mass Intention' && (
+            <button
+              type="button"
+              role="menuitem"
+              disabled={actionLoading}
+              onClick={() => {
+                const reservation = openActionMenu.reservation;
+                setOpenActionMenu(null);
+                handleQuickStatus(reservation, 'Paid');
+              }}
+              className="flex min-h-10 w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-[#477c58] transition hover:bg-[#e8f2eb] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5e9b70]/40 disabled:opacity-50"
+            >
+              <BadgeCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>Mark as Paid</span>
+            </button>
+          )}
+          {openActionMenu.reservation.service_type !== 'Mass Intention' && <div className="my-1 border-t border-[#eee7db]" />}
+          <button
+            type="button"
+            role="menuitem"
+            disabled={actionLoading}
+            onClick={() => {
+              const reservation = openActionMenu.reservation;
+              setOpenActionMenu(null);
+              handleQuickStatus(reservation, 'Cancelled');
+            }}
+            className="flex min-h-10 w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-[#b6534b] transition hover:bg-[#fff3f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c97868]/40 disabled:opacity-50"
+          >
+            <X className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>Cancel reservation</span>
+          </button>
+        </div>,
+        document.body,
+      )}
     </DashboardLayout>
   );
 }

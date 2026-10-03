@@ -410,12 +410,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
                     'Completed' => "Holy Family Parish: Your Mass Intention reservation for {$resDate} at {$resTime} has been marked completed. Reservation ID: {$id}.",
                     'Rejected' => "Holy Family Parish: Your Mass Intention reservation has been rejected." . ($remarks !== '' ? " Reason: {$remarks}." : '') . " Reservation ID: {$id}.",
                 ];
+            } elseif ($serviceLabel === 'Funeral') {
+                $reservationDate = DateTimeImmutable::createFromFormat('!Y-m-d', $resDate, parishTimezone());
+                $approvalDate = parishToday();
+                $advanceDays = $reservationDate && $reservationDate >= $approvalDate
+                    ? (int) $approvalDate->diff($reservationDate)->days
+                    : 0;
+                $deadline = $approvalDate->modify('+' . (int) floor($advanceDays * 0.5) . ' days');
+
+                $smsMessages = [
+                    'Approved' => "Holy Family Parish: Your Funeral reservation has been approved for {$resDate} at {$resTime}. Reservation ID: {$id}. You can now visit our office to settle your payment. Due of Payment until {$deadline->format('M j, Y')}. Please settle your payment by the deadline to confirm your reservation. Thank you.",
+                    'Paid' => "Holy Family Parish: Your payment has been confirmed. Your Funeral reservation is confirmed for {$resDate} at {$resTime}. Please arrive at least 30 minutes before your scheduled time. Thank you.",
+                    'Rejected' => "Holy Family Parish: Your Funeral reservation has been rejected." . ($remarks !== '' ? " Reason: {$remarks}." : '') . " Reservation ID: {$id}.",
+                ];
+            } elseif ($serviceLabel === 'Baptism') {
+                $reservationDate = DateTimeImmutable::createFromFormat('!Y-m-d', $resDate, parishTimezone());
+                $approvalDate = parishToday();
+                $advanceDays = $reservationDate && $reservationDate >= $approvalDate
+                    ? (int) $approvalDate->diff($reservationDate)->days
+                    : 0;
+                $deadline = $approvalDate->modify('+' . (int) floor($advanceDays * 0.6) . ' days');
+
+                $smsMessages = [
+                    'Approved' => "Holy Family Parish: Your Baptism reservation has been approved for {$resDate} at {$resTime}. Reservation ID: {$id}. You can now visit our office to settle your payment. Due of Payment until {$deadline->format('M j, Y')}. Please settle your payment by the deadline to confirm your reservation. Thank you.",
+                    'Paid' => "Holy Family Parish: Your payment has been confirmed. Your Baptism reservation is confirmed for {$resDate} at {$resTime}. Please arrive at least 30 minutes before your scheduled time for seminar. Thank you!",
+                    'Rejected' => "Holy Family Parish: Your Baptism reservation has been rejected." . ($remarks !== '' ? " Reason: {$remarks}." : '') . " Reservation ID: {$id}.",
+                ];
+            } elseif ($serviceLabel === 'Marriage') {
+                $reservationDate = DateTimeImmutable::createFromFormat('!Y-m-d', $resDate, parishTimezone());
+                $approvalDate = parishToday();
+                $twoMonthsFromApproval = $approvalDate->modify('+2 months');
+
+                if ($reservationDate && $reservationDate >= $twoMonthsFromApproval) {
+                    $advanceDays = (int) $approvalDate->diff($reservationDate)->days;
+                    $deadline = $approvalDate->modify('+' . (int) floor($advanceDays / 2) . ' days');
+                    $paymentGuidance = 'You can now visit our office to settle your payment. Due of Payment until ' . $deadline->format('M j, Y') . ' , or the reservation will be cancelled.';
+                } else {
+                    $oneWeekDeadline = $approvalDate->modify('+7 days');
+                    if ($reservationDate && $reservationDate < $oneWeekDeadline) {
+                        $oneWeekDeadline = $reservationDate;
+                    }
+                    $paymentGuidance = 'You can now visit our office to settle your payment. Due of Payment until ' . $oneWeekDeadline->format('M j, Y') . ' , or the reservation will be cancelled.';
+                }
+
+                $smsMessages = [
+                    'Approved' => "Holy Family Parish: Your Marriage reservation has been approved for {$resDate} at {$resTime}. Reservation ID: {$id}.{$paymentGuidance} Thank you.",
+                    'Paid' => "Holy Family Parish: Your payment has been confirmed. Your Marriage reservation is confirmed for {$resDate} at {$resTime}. Please arrive at least 30 minutes before your scheduled time. Thank you!",
+                    'Rejected' => "Holy Family Parish: Your Marriage reservation has been rejected." . ($remarks !== '' ? " Reason: {$remarks}." : '') . " Reservation ID: {$id}.",
+                ];
+            } elseif ($serviceLabel === 'Private Mass') {
+                $reservationDate = DateTimeImmutable::createFromFormat('!Y-m-d', $resDate, parishTimezone());
+                $approvalDate = parishToday();
+                $deadline = $approvalDate->modify('+7 days');
+                if ($reservationDate && $reservationDate < $deadline) {
+                    $deadline = $reservationDate;
+                }
+
+                $smsMessages = [
+                    'Approved' => "Holy Family Parish: Your Private Mass reservation has been approved for {$resDate} at {$resTime}. Reservation ID: {$id}. You can now visit our office to settle your payment. Due of Payment until {$deadline->format('M j, Y')}. Please settle your payment by the deadline to confirm your reservation. Thank you.",
+                    'Paid' => "Holy Family Parish: Your payment has been confirmed. Your Private Mass reservation is confirmed for {$resDate} at {$resTime}. Thank you!",
+                    'Rejected' => "Holy Family Parish: Your Private Mass reservation has been rejected." . ($remarks !== '' ? " Reason: {$remarks}." : '') . " Reservation ID: {$id}.",
+                ];
             } else {
                 $smsMessages = [
-                    'Approved' => "Holy Family Parish: Your {$serviceLabel} reservation has been approved for {$resDate} at {$resTime}. Reservation ID: {$id}. Please visit the Parish Office to process your payments. Kindly bring sufficient cash for any applicable fees. Thank you.",
-                    'Paid' => "Holy Family Parish: Your payment has been confirmed. Your {$serviceLabel} reservation is confirmed for {$resDate} at {$resTime}. Please arrive at least 15 minutes before your scheduled time. Thank you!",
+                    'Approved' => "Holy Family Parish: Your {$serviceLabel} reservation has been approved for {$resDate} at {$resTime}. Reservation ID: {$id}. You can now visit our office to settle your payment. Due of Payment until {$deadline->format('M j, Y')}. Please settle your payment by the deadline to confirm your reservation. Thank you.",
+                    'Paid' => "Holy Family Parish: Your payment has been confirmed. Your {$serviceLabel} reservation is confirmed for {$resDate} at {$resTime}. Thank you!",
                     'Rejected' => "Holy Family Parish: Your {$serviceLabel} reservation has been rejected." . ($remarks !== '' ? " Reason: {$remarks}." : '') . " Reservation ID: {$id}.",
                 ];
+            }
+
+            if ($status === 'Cancelled') {
+                $smsMessages['Cancelled'] = "Holy Family Parish: Payment didn't settle, your {$serviceLabel} reservation for {$resDate} at {$resTime} has been cancelled by the parish. Reservation ID: {$id}. Thank you!";
             }
 
             if (isset($smsMessages[$status])) {
