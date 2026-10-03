@@ -379,8 +379,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
         }
     }
 
-    $upd = $db->prepare('UPDATE reservations SET status = ?, remarks = ? WHERE id = ?');
-    $upd->execute([$status, $remarks ?: null, $id]);
+    $upd = $db->prepare('UPDATE reservations SET status = ?, remarks = ? WHERE id = ? AND status = ?');
+    $upd->execute([$status, $remarks ?: null, $id, $previousStatus]);
+    if ($statusChanged && $upd->rowCount() !== 1) {
+        errorResponse('This reservation was updated by another admin. Refresh the list and try again.', 409);
+    }
 
     if ($status === 'Completed' && $statusChanged) {
         createReservationRecordIfMissing($db, $id);
@@ -402,7 +405,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
             $resDate = (string) $reservation['reservation_date'];
             $resTime = (string) $reservation['reservation_time'];
 
-            if ($serviceLabel === 'Mass Intention') {
+            if ($status === 'Cancelled') {
+                $smsMessages = [
+                    'Cancelled' => "Holy Family Parish: payme. Payment didn't settle. Your {$serviceLabel} reservation for {$resDate} at {$resTime} has been cancelled by a parish admin. Reservation ID: {$id}. Thank you.",
+                ];
+            } elseif ($serviceLabel === 'Mass Intention') {
                 // Mass Intention uses its own dedicated wording, not the generic reservation message.
                 $massIntentionLabel = (string) ($reservation['intention_name'] ?: 'Mass Intention');
                 $smsMessages = [
@@ -477,10 +484,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
                     'Paid' => "Holy Family Parish: Your payment has been confirmed. Your {$serviceLabel} reservation is confirmed for {$resDate} at {$resTime}. Thank you!",
                     'Rejected' => "Holy Family Parish: Your {$serviceLabel} reservation has been rejected." . ($remarks !== '' ? " Reason: {$remarks}." : '') . " Reservation ID: {$id}.",
                 ];
-            }
-
-            if ($status === 'Cancelled') {
-                $smsMessages['Cancelled'] = "Holy Family Parish: Payment didn't settle, your {$serviceLabel} reservation for {$resDate} at {$resTime} has been cancelled by the parish. Reservation ID: {$id}. Thank you!";
             }
 
             if (isset($smsMessages[$status])) {
