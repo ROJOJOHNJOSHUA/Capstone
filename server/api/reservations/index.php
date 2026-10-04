@@ -214,8 +214,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new DomainException('This Mass schedule is already full (100/100). Please select another available schedule.');
             }
         } else {
+            $sharedServiceTypes = sharedPriestServiceTypes();
+            if (in_array($data['service_type'], $sharedServiceTypes, true)) {
+                $conflictStmt = $db->prepare(
+                    "SELECT reservation_time, service_type
+                     FROM reservations
+                     WHERE reservation_date = ?
+                       AND service_type IN ('Marriage', 'Funeral', 'Baptism', 'Private Mass')
+                       AND status IN ('Pending', 'Under Review', 'Approved')"
+                );
+                $conflictStmt->execute([$date]);
+                $targetPeriod = reservationTimePriestPeriod($time);
+                $conflict = null;
+                while ($conflictRow = $conflictStmt->fetch(PDO::FETCH_ASSOC)) {
+                    $existingTime = (string) ($conflictRow['reservation_time'] ?? '');
+                    if ($existingTime === '' || reservationTimePriestPeriod($existingTime) !== $targetPeriod) {
+                        continue;
+                    }
+                    $conflict = (string) ($conflictRow['service_type'] ?? 'Reservation');
+                    break;
+                }
+                if ($conflict !== null) {
+                    throw new DomainException("This {$targetPeriod} period is already booked for another service ({$conflict}). Please select another available time.");
+                }
+            }
+
             $check = $db->prepare(
-                "SELECT id FROM reservations WHERE reservation_date = ? AND reservation_time = ? AND status != 'Rejected' LIMIT 1"
+                "SELECT id FROM reservations WHERE reservation_date = ? AND reservation_time = ? AND status NOT IN ('Rejected', 'Cancelled') LIMIT 1"
             );
             $check->execute([$date, $time]);
             if ($check->fetch()) {

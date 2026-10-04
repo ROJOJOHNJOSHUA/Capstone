@@ -99,6 +99,48 @@ function isAtLeastDaysAhead(string $date, int $days): bool
     return ((int) $diff->days) >= $days;
 }
 
+function sharedPriestServiceTypes(): array
+{
+    return ['Marriage', 'Funeral', 'Baptism', 'Private Mass'];
+}
+
+function reservationTimePriestPeriod(string $time): string
+{
+    $normalized = normalizeTime($time);
+    if (!preg_match('/^(\d{2}):\d{2}:\d{2}$/', $normalized, $matches)) {
+        return 'afternoon';
+    }
+    $hour = (int) $matches[1];
+    return $hour < 12 ? 'morning' : 'afternoon';
+}
+
+function sharedPriestConflictPeriodsForDate(PDO $db, string $date): array
+{
+    $periods = ['morning' => false, 'afternoon' => false];
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        return $periods;
+    }
+
+    $stmt = $db->prepare(
+        "SELECT reservation_time
+         FROM reservations
+         WHERE reservation_date = ?
+           AND service_type IN ('Marriage', 'Funeral', 'Baptism', 'Private Mass')
+           AND status IN ('Pending', 'Under Review', 'Approved')"
+    );
+    $stmt->execute([$date]);
+
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $time = (string) ($row['reservation_time'] ?? '');
+        if ($time === '') {
+            continue;
+        }
+        $periods[reservationTimePriestPeriod($time)] = true;
+    }
+
+    return $periods;
+}
+
 /**
  * Holy Family Parish — single venue reservation schedule.
  *
@@ -174,7 +216,7 @@ function allowedReservationSlots(string $serviceType, string $date): array
  * @param array<int, string> $bookedTimes Times already reserved at this date (HH:MM:SS)
  * @return array{status: string, available_count: int, total_slots: int}
  */
-function reservationDateAvailability(string $serviceType, string $date, array $bookedTimes = []): array
+function reservationDateAvailability(string $serviceType, string $date, array $bookedTimes = [], ?array $sharedPriestPeriods = null): array
 {
     $d = parseIsoDate($date);
     if (!$d) {
@@ -186,8 +228,16 @@ function reservationDateAvailability(string $serviceType, string $date, array $b
         return ['status' => 'unavailable', 'available_count' => 0, 'total_slots' => 0];
     }
 
-    $booked = array_values(array_intersect($allowedSlots, $bookedTimes));
-    $available = array_values(array_diff($allowedSlots, $booked));
+    $sharedStatus = is_array($sharedPriestPeriods) ? $sharedPriestPeriods : ['morning' => false, 'afternoon' => false];
+    $available = [];
+    foreach ($allowedSlots as $slot) {
+        $period = reservationTimePriestPeriod($slot);
+        $periodBlocked = (bool) ($sharedStatus[$period] ?? false);
+        $slotBooked = in_array($slot, $bookedTimes, true);
+        if (!$slotBooked && !$periodBlocked) {
+            $available[] = $slot;
+        }
+    }
     $today = new DateTimeImmutable('today');
 
     if ($d < $today) {

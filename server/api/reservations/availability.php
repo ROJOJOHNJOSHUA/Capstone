@@ -31,17 +31,17 @@ if ($month !== '') {
     }
     $monthEnd = $monthStart->modify('last day of this month');
 
-        $serviceFilter = $serviceType === 'Mass Intention' ? ' AND service_type = ?' : '';
-        $stmt = $db->prepare(
-                "SELECT reservation_date, reservation_time, COUNT(*) AS reservation_count
-                 FROM reservations
-                 WHERE reservation_date BETWEEN ? AND ?
-                     AND status IN ('Pending', 'Under Review', 'Approved'){$serviceFilter}
-                 GROUP BY reservation_date, reservation_time"
-        );
-        $params = [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')];
-        if ($serviceFilter !== '') $params[] = $serviceType;
-        $stmt->execute($params);
+    $serviceFilter = $serviceType === 'Mass Intention' ? ' AND service_type = ?' : '';
+    $stmt = $db->prepare(
+            "SELECT reservation_date, reservation_time, COUNT(*) AS reservation_count
+             FROM reservations
+             WHERE reservation_date BETWEEN ? AND ?
+                 AND status IN ('Pending', 'Under Review', 'Approved'){$serviceFilter}
+             GROUP BY reservation_date, reservation_time"
+    );
+    $params = [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')];
+    if ($serviceFilter !== '') $params[] = $serviceType;
+    $stmt->execute($params);
     $rows = $stmt->fetchAll();
 
     $bookedByDate = [];
@@ -54,6 +54,26 @@ if ($month !== '') {
         $bookedByDate[$day][$time] = (int) $row['reservation_count'];
     }
 
+    $sharedConflictByDate = [];
+    if (in_array($serviceType, sharedPriestServiceTypes(), true)) {
+        $sharedStmt = $db->prepare(
+            "SELECT reservation_date, reservation_time
+             FROM reservations
+             WHERE reservation_date BETWEEN ? AND ?
+               AND service_type IN ('Marriage', 'Funeral', 'Baptism', 'Private Mass')
+               AND status IN ('Pending', 'Under Review', 'Approved')"
+        );
+        $sharedStmt->execute([$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')]);
+        foreach ($sharedStmt->fetchAll(PDO::FETCH_ASSOC) as $sharedRow) {
+            $date = (string) ($sharedRow['reservation_date'] ?? '');
+            $time = (string) ($sharedRow['reservation_time'] ?? '');
+            if ($date === '' || $time === '') {
+                continue;
+            }
+            $sharedConflictByDate[$date][reservationTimePriestPeriod($time)] = true;
+        }
+    }
+
     $dates = [];
     $cursor = $monthStart;
     while ($cursor <= $monthEnd) {
@@ -62,6 +82,7 @@ if ($month !== '') {
         if (in_array($serviceType, ['Mass Intention', 'Funeral', 'Private Mass'], true)) {
             $allowed = filterPastAppointmentSlots($day, $allowed);
         }
+        $sharedPeriods = $sharedConflictByDate[$day] ?? ['morning' => false, 'afternoon' => false];
         if ($serviceType === 'Mass Intention') {
             $capacity = 100;
             $fullCount = 0;
@@ -77,7 +98,8 @@ if ($month !== '') {
             $capacity = 20;
             $fullCount = 0;
             foreach ($allowed as $slot) {
-                if (($bookedByDate[$day][$slot] ?? 0) >= $capacity) $fullCount++;
+                $periodBlocked = (bool) ($sharedPeriods[reservationTimePriestPeriod($slot)] ?? false);
+                if ($periodBlocked || ($bookedByDate[$day][$slot] ?? 0) >= $capacity) $fullCount++;
             }
             $dates[$day] = [
                 'status' => $allowed === [] ? 'unavailable' : ($fullCount === count($allowed) ? 'full' : 'available'),
@@ -85,7 +107,12 @@ if ($month !== '') {
                 'total_slots' => count($allowed),
             ];
         } else {
-            $dates[$day] = reservationDateAvailability($serviceType, $day, array_keys($bookedByDate[$day] ?? []));
+            $dates[$day] = reservationDateAvailability(
+                $serviceType,
+                $day,
+                array_keys($bookedByDate[$day] ?? []),
+                $sharedPeriods
+            );
         }
         $cursor = $cursor->modify('+1 day');
     }
@@ -118,6 +145,11 @@ if (empty($allowedSlots)) {
     ]);
 }
 
+$sharedConflictPeriods = ['morning' => false, 'afternoon' => false];
+if (in_array($serviceType, sharedPriestServiceTypes(), true)) {
+    $sharedConflictPeriods = sharedPriestConflictPeriodsForDate($db, $date);
+}
+
 $serviceFilter = $serviceType === 'Mass Intention' ? ' AND service_type = ?' : '';
 $stmt = $db->prepare(
     "SELECT reservation_time, COUNT(*) AS reservation_count
@@ -132,19 +164,27 @@ $counts = [];
 foreach ($stmt->fetchAll() as $row) $counts[(string) $row['reservation_time']] = (int) $row['reservation_count'];
 
 $capacity = $serviceType === 'Mass Intention' ? 100 : ($serviceType === 'Baptism' ? 20 : 1);
-$available = array_values(array_filter($allowedSlots, fn ($time) => ($counts[$time] ?? 0) < $capacity));
-$slots = array_map(function ($time) use ($counts, $capacity) {
+$available = [];
+$booked = [];
+$slots = array_map(function ($time) use ($counts, $capacity, $sharedConflictPeriods, &$available, &$booked) {
     $count = $counts[$time] ?? 0;
+    $period = reservationTimePriestPeriod($time);
+    $blockedByPriest = (bool) ($sharedConflictPeriods[$period] ?? false);
+    $status = ($blockedByPriest || $count >= $capacity) ? 'full' : 'available';
+    if ($status === 'available') {
+        $available[] = $time;
+    } else {
+        $booked[] = $time;
+    }
     return [
         'time' => $time,
-        'status' => $count >= $capacity ? 'full' : 'available',
+        'status' => $status,
         'reservation_count' => $count,
         'capacity' => $capacity,
         'remaining' => max(0, $capacity - $count),
+        'blocked_by_priest' => $blockedByPriest,
     ];
 }, $allowedSlots);
-
-$booked = array_values(array_filter($allowedSlots, fn ($time) => ($counts[$time] ?? 0) >= $capacity));
 
 successResponse([
     'date' => $date,
