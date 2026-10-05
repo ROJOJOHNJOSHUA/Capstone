@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import LoadingSpinner from '../components/forms/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
-import { getMe, updateProfile } from '../services/api';
+import { getMe, getProfilePicture, updateProfile, uploadProfilePicture } from '../services/api';
 
 function ReadOnlyField({ label, value, hint }) {
   return (
@@ -17,7 +17,7 @@ function ReadOnlyField({ label, value, hint }) {
 }
 
 export default function Profile() {
-  const { user, loadUser } = useAuth();
+  const { user, loadUser, refreshProfilePicture } = useAuth();
   const { t } = useSettings();
   const [account, setAccount] = useState({
     email: '',
@@ -36,8 +36,11 @@ export default function Profile() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [profilePicture, setProfilePicture] = useState('');
+  const [pendingProfilePicture, setPendingProfilePicture] = useState(null);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [errors, setErrors] = useState({});
+  const profilePictureInput = useRef(null);
 
   useEffect(() => {
     getMe()
@@ -59,6 +62,26 @@ export default function Profile() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    getProfilePicture()
+      .then((res) => {
+        if (active) setProfilePicture(URL.createObjectURL(res.data));
+      })
+      .catch((err) => {
+        if (err.status !== 404) {
+          setMessage({ type: 'error', text: err.message || 'Could not load your profile picture.' });
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => () => {
+    if (profilePicture) URL.revokeObjectURL(profilePicture);
+  }, [profilePicture]);
+
   const memberSince = account.created_at
     ? new Date(account.created_at).toLocaleDateString(undefined, {
         year: 'numeric',
@@ -66,16 +89,34 @@ export default function Profile() {
         day: 'numeric',
       })
     : '';
-
-  const initials = (form.fullname || user?.fullname || '')
+  const profileInitials = (saved.fullname || user?.fullname || '')
     .split(' ')
     .filter(Boolean)
     .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase() || '')
+    .map((part) => part[0]?.toUpperCase() || '')
     .join('') || 'U';
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleProfilePictureChange = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setMessage({ type: 'error', text: 'Choose a JPG, PNG, or WebP image.' });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'Profile pictures must be smaller than 5 MB.' });
+      return;
+    }
+
+    setMessage({ type: '', text: '' });
+    setPendingProfilePicture(file);
+    setProfilePicture(URL.createObjectURL(file));
   };
 
   const handleSubmit = async (e) => {
@@ -83,6 +124,8 @@ export default function Profile() {
     setMessage({ type: '', text: '' });
     setErrors({});
     setSaving(true);
+    let profileDetailsSaved = false;
+    let profilePictureSaved = false;
     try {
       const payload = {
         fullname: form.fullname.trim(),
@@ -90,12 +133,28 @@ export default function Profile() {
         address: form.address.trim(),
       };
       await updateProfile(payload);
-      await loadUser();
+      profileDetailsSaved = true;
       setSaved(payload);
       setForm(payload);
+      if (pendingProfilePicture) {
+        await uploadProfilePicture(pendingProfilePicture);
+        profilePictureSaved = true;
+        refreshProfilePicture();
+        const pictureResponse = await getProfilePicture();
+        setProfilePicture(URL.createObjectURL(pictureResponse.data));
+        setPendingProfilePicture(null);
+      }
+      await loadUser();
       setMessage({ type: 'success', text: t('profile.updated') });
     } catch (err) {
-      setMessage({ type: 'error', text: err.message || t('profile.updateFailed') });
+      setMessage({
+        type: 'error',
+        text: profileDetailsSaved
+          ? profilePictureSaved
+            ? `Your profile details and picture were saved, but the page could not refresh your account. ${err.message || 'Please reload the page.'}`
+            : `Your profile details were saved, but the profile picture was not. ${err.message || 'Please try saving again.'}`
+          : err.message || t('profile.updateFailed'),
+      });
       if (err.errors) setErrors(err.errors);
     } finally {
       setSaving(false);
@@ -128,29 +187,43 @@ export default function Profile() {
   return (
     <DashboardLayout>
       <div className="max-w-6xl">
-        <div className="relative mb-6 overflow-hidden rounded-xl border border-[#e7dfd2] bg-[#f5efe3] px-5 py-6 shadow-sm sm:px-7"><div className="pointer-events-none absolute inset-0 bg-[url('/parish.jpg')] bg-cover bg-center opacity-22" aria-hidden="true" /><div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#f5efe3] via-[#f5efe3]/75 to-[#f5efe3]/10" aria-hidden="true" />
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-4">
-              <div className="relative flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#f0e1bc] bg-[#b18a45] text-xl font-bold text-white shadow-sm">
-                {initials}
-              </div>
-              <div className="relative">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#b18a45]">Profile</p><h1 className="mt-1 font-display text-4xl text-[#1f3342]">{t('profile.title')}</h1>
-                <p className="mt-1 text-sm text-[#6e7274]">{t('profile.subtitle')}</p>
-              </div>
-            </div>
-
-            <div className="relative rounded-full border border-[#d7c5a5] bg-white/70 px-4 py-2 text-sm font-medium text-[#58616a] backdrop-blur-sm">
-              {account.role ? account.role.charAt(0).toUpperCase() + account.role.slice(1) : 'Member'}
-            </div>
-          </div>
-        </div>
-
         <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
           <section className="rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-5 shadow-sm sm:p-6">
-            <h2 className="text-lg font-semibold text-[#0f2337]">{t('profile.registeredInfo')}</h2>
-            <p className="mt-1 text-sm text-slate-500">{t('profile.registeredInfoDesc')}</p>
-            <div className="mt-5 grid gap-3">
+            <div className="mb-5 flex justify-center">
+              <div className="relative">
+                <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-4 border-[#f0e1bc] bg-[#b18a45] text-2xl font-semibold text-white shadow-sm">
+                  {profilePicture
+                    ? <img src={profilePicture} alt={`${saved.fullname || user?.fullname || 'User'} profile`} className="h-full w-full object-cover" />
+                    : profileInitials}
+                </div>
+                <input
+                  ref={profilePictureInput}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={handleProfilePictureChange}
+                  aria-label="Choose profile picture"
+                />
+                <button
+                  type="button"
+                  onClick={() => profilePictureInput.current?.click()}
+                  aria-label="Choose profile picture"
+                  title="Choose profile picture — click Save Changes to save"
+                  className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#fffdf8] bg-[#f0e1bc] text-[#775b25] shadow-sm transition hover:bg-[#e7d3a8]"
+                >
+                  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" className="h-3.5 w-3.5">
+                    <path d="M13.9 3.1a1.6 1.6 0 0 1 2.3 2.3L7 14.6l-3.2.8.8-3.2 9.3-9.1Z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="m12.5 4.5 3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+              {pendingProfilePicture && (
+                <p className="mt-2 text-center text-xs font-medium text-[#8a6b34]">
+                  New photo selected. Click Save Changes to save it.
+                </p>
+              )}
+            </div>
+            <div className="grid gap-3">
               <ReadOnlyField label={t('profile.email')} value={account.email} hint={t('profile.emailHint')} />
               {memberSince && <ReadOnlyField label={t('profile.memberSince')} value={memberSince} />}
               <ReadOnlyField label={t('profile.fullName')} value={saved.fullname} />

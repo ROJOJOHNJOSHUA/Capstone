@@ -422,30 +422,51 @@ export default function Appointment() {
       {msg && <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">{msg}</div>}
 
       {showForm && (
-        <form ref={formRef} onSubmit={(event) => event.preventDefault()} className="card mb-6 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-parish-gold">Request Appointment</p>
-              <h2 className="mt-1 font-display text-2xl text-parish-blue">{APPOINTMENT_STEPS[currentStep]}</h2>
+        <form ref={formRef} onSubmit={(event) => event.preventDefault()} className="reservation-request-form mb-6 overflow-hidden rounded-[30px] border border-[#e8dfd0] bg-white shadow-[0_22px_45px_rgba(15,31,45,0.08)]">
+          <header className="border-b border-slate-200 bg-slate-50 px-4 py-5 sm:px-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#b18a45]">Request appointment</p>
+                <h2 className="mt-2 font-display text-2xl font-semibold text-[#0f2337]">{APPOINTMENT_STEPS[currentStep]}</h2>
+              </div>
+              <span className="self-start rounded-full border border-[#e8dfd0] bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600 sm:self-auto">
+                Step {currentStep + 1} of {APPOINTMENT_STEPS.length}
+              </span>
             </div>
-            <span className="rounded-full bg-parish-gold-light px-3 py-1 text-xs font-semibold text-parish-blue">Step {currentStep + 1} of {APPOINTMENT_STEPS.length}</span>
-          </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {APPOINTMENT_STEPS.map((step, index) => (
-              <button key={step} type="button" onClick={() => index <= currentStep && setCurrentStep(index)} className={`rounded-lg px-2 py-2 text-left text-xs font-semibold ${index === currentStep ? 'bg-parish-blue text-white' : index < currentStep ? 'bg-parish-gold-light text-parish-blue' : 'bg-gray-100 text-gray-400'}`}>
-                {index + 1}. {step}
-              </button>
-            ))}
-          </div>
-          <p className="text-sm text-gray-600">
-                            <strong>Office hours:</strong> Monday and Wednesday–Sunday
-            <br />
-            Available appointment slots: 8:00–11:00 AM and 1:00–5:00 PM (30-minute intervals)
-            <br />
-            The parish is closed Tuesdays. Green dates have viewable slots; red dates are fully booked.
-          </p>
-          {error && <div className="bg-red-50 text-red-700 p-3 rounded text-sm">{error}</div>}
+          </header>
+
+          <nav aria-label="Appointment request progress" className="border-b border-slate-200 bg-white px-3 py-4 sm:px-6">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {APPOINTMENT_STEPS.map((step, index) => (
+                <button
+                  key={step}
+                  type="button"
+                  disabled={index > currentStep}
+                  onClick={() => index <= currentStep && setCurrentStep(index)}
+                  className={`min-w-0 rounded-xl border px-3 py-2.5 text-left transition disabled:cursor-not-allowed ${
+                    index === currentStep
+                      ? 'border-[#0f2337] bg-[#0f2337] text-white shadow-sm'
+                      : index < currentStep
+                        ? 'border-[#e8dfd0] bg-[#faf5ea] text-[#775b25]'
+                        : 'border-slate-200 bg-slate-50 text-slate-500'
+                  }`}
+                >
+                  <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] opacity-80">Step {index + 1}</span>
+                  <span className="mt-1 block text-xs font-semibold leading-4 sm:text-sm">{step}</span>
+                </button>
+              ))}
+            </div>
+          </nav>
+
+          <div className="space-y-5 p-3 sm:p-6">
+            <div className="rounded-2xl border border-[#f1e5cf] bg-[#fffaf0] px-4 py-3 text-sm leading-6 text-[#5b5344] sm:px-5">
+              <p><strong className="text-[#594726]">Office hours:</strong> Monday and Wednesday–Sunday</p>
+              <p>Available appointment slots: 8:00–11:00 AM and 1:00–5:00 PM (30-minute intervals)</p>
+              <p>The parish is closed Tuesdays. Green dates have viewable slots; red dates are fully booked.</p>
+            </div>
+            {error && <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>}
           {currentStep === 0 && (
+            <section className="rounded-[24px] border border-slate-200 bg-[#f8fafc] p-4 sm:p-5">
             <div className="grid gap-4 sm:grid-cols-2">
               {[
                 ['fullname', 'Full Name'],
@@ -453,36 +474,39 @@ export default function Appointment() {
                 ['phone', 'Contact Number'],
                 ['address', 'Address'],
               ].map(([field, label]) => (
-                <label key={field} className="text-sm font-medium text-gray-700 sm:last:col-span-2">
-                  {label}
-                  <input className="input-field mt-2" type={field === 'email' ? 'email' : 'text'} value={form[field]} onChange={(e) => updateField(field, e.target.value)} required />
+                <label key={field} className={`block text-sm font-medium text-slate-700 ${field === 'address' ? 'sm:col-span-2' : ''}`}>
+                  <span className="mb-2 block">{label}</span>
+                  <input className="input-field" type={field === 'email' ? 'email' : 'text'} value={form[field]} onChange={(e) => updateField(field, e.target.value)} required />
                 </label>
               ))}
             </div>
+            </section>
           )}
           {currentStep === 1 && (
-            <div className="space-y-4">
-              <label className="block text-sm font-medium text-gray-700">What is the purpose of your appointment?
-                <select className="input-field mt-2" value={form.purpose} onChange={(e) => updateField('purpose', e.target.value)} required>
+            <section className="space-y-4 rounded-[24px] border border-slate-200 bg-[#f8fafc] p-4 sm:p-5">
+              <label className="block text-sm font-medium text-slate-700">
+                <span className="mb-2 block">What is the purpose of your appointment?</span>
+                <select className="input-field" value={form.purpose} onChange={(e) => updateField('purpose', e.target.value)} required>
                   <option value="">Choose a purpose</option>
                   {PURPOSE_OPTIONS.map((purpose) => <option key={purpose} value={purpose}>{purpose}</option>)}
                 </select>
               </label>
               {form.purpose === 'Other' && (
-                <label className="block text-sm font-medium text-gray-700">Please specify your purpose
-                  <textarea className="input-field mt-2" rows={3} value={form.custom_purpose} onChange={(e) => updateField('custom_purpose', e.target.value)} required />
+                <label className="block text-sm font-medium text-slate-700">
+                  <span className="mb-2 block">Please specify your purpose</span>
+                  <textarea className="input-field min-h-[100px]" rows={3} value={form.custom_purpose} onChange={(e) => updateField('custom_purpose', e.target.value)} required />
                 </label>
               )}
-            </div>
+            </section>
           )}
-          {currentStep === 2 && <div className="grid gap-6 lg:grid-cols-2">
-            <div>
-              <label className="block text-sm font-medium mb-2">Select Date</label>
-              <div className="border rounded-lg p-4 bg-gray-50">
-                <div className="flex items-center justify-between mb-3">
+          {currentStep === 2 && <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+            <section className="min-w-0 rounded-[24px] border border-slate-200 bg-[#f8fafc] p-4 sm:p-5">
+              <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Select Date</h3>
+              <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
+                <div className="mb-3 flex items-center justify-between gap-2">
                   <button
                     type="button"
-                    className="px-3 py-1 rounded border text-sm hover:bg-white"
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 sm:text-sm"
                     onClick={() => {
                       const d = new Date(monthDate.getFullYear(), monthDate.getMonth() - 1, 1);
                       setCalendarMonth(toIsoMonth(d));
@@ -490,10 +514,10 @@ export default function Appointment() {
                   >
                     ← Prev
                   </button>
-                  <div className="text-sm font-semibold">{formatMonthLabel(calendarMonth)}</div>
+                  <div className="text-center text-sm font-semibold text-[#0f2337]">{formatMonthLabel(calendarMonth)}</div>
                   <button
                     type="button"
-                    className="px-3 py-1 rounded border text-sm hover:bg-white"
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 sm:text-sm"
                     onClick={() => {
                       const d = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
                       setCalendarMonth(toIsoMonth(d));
@@ -502,9 +526,9 @@ export default function Appointment() {
                     Next →
                   </button>
                 </div>
-                <div className="grid grid-cols-7 gap-1 text-xs text-gray-600 mb-1">
+                <div className="mb-1 grid grid-cols-7 gap-1 text-xs text-slate-500">
                   {WEEKDAY_LABELS.map((day) => (
-                    <div key={day} className="text-center py-1 font-medium">
+                    <div key={day} className="py-1 text-center font-medium">
                       {day}
                     </div>
                   ))}
@@ -512,7 +536,7 @@ export default function Appointment() {
                 <div className="grid grid-cols-7 gap-1">
                   {dateCells.map((iso, idx) => {
                     if (!iso) {
-                      return <div key={`empty-${idx}`} className="h-10" />;
+                      return <div key={`empty-${idx}`} className="h-9 sm:h-10" />;
                     }
                     const status = dateStatuses[iso]?.status || 'unavailable';
                     const isSelected = form.appointment_date === iso;
@@ -521,10 +545,10 @@ export default function Appointment() {
                     const isFull = status === 'full' && !isPast;
                     const isDisabled = !isAvailable;
 
-                    let bgCls = 'bg-gray-100 text-gray-400 border-gray-200';
-                    if (isAvailable) bgCls = 'bg-green-100 text-green-800 border-green-400';
-                    if (isFull) bgCls = 'bg-red-100 text-red-800 border-red-400';
-                    if (isSelected) bgCls += ' ring-2 ring-parish-blue ring-offset-1';
+                    let bgCls = 'border border-slate-200 bg-slate-100 text-slate-400';
+                    if (isAvailable) bgCls = 'border border-emerald-300 bg-emerald-100 text-emerald-800';
+                    if (isFull) bgCls = 'border border-red-300 bg-red-100 text-red-800';
+                    if (isSelected) bgCls += ' ring-2 ring-[#0f2337] ring-offset-1';
 
                     const title = getCalendarDateTitle(iso, status, todayIso);
 
@@ -534,7 +558,7 @@ export default function Appointment() {
                         type="button"
                         disabled={isDisabled}
                         title={title}
-                        className={`h-10 rounded border text-xs font-semibold ${bgCls} ${
+                        className={`h-9 rounded-lg text-xs font-semibold transition sm:h-10 ${bgCls} ${
                           isAvailable ? 'hover:brightness-95 cursor-pointer' : 'cursor-not-allowed'
                         }`}
                         onClick={() => handleDateSelect(iso)}
@@ -544,22 +568,22 @@ export default function Appointment() {
                     );
                   })}
                 </div>
-                <div className="flex flex-wrap gap-4 mt-4 text-xs text-gray-600">
+                <div className="mt-4 flex flex-wrap gap-4 text-xs text-slate-600">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-4 h-4 rounded bg-green-100 border border-green-400 inline-block" />
+                    <span className="inline-block h-3.5 w-3.5 rounded border border-emerald-300 bg-emerald-100" />
                     Available
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-4 h-4 rounded bg-red-100 border border-red-400 inline-block" />
+                    <span className="inline-block h-3.5 w-3.5 rounded border border-red-300 bg-red-100" />
                     Fully booked
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-4 h-4 rounded bg-gray-100 border border-gray-300 inline-block" />
+                    <span className="inline-block h-3.5 w-3.5 rounded border border-slate-300 bg-slate-100" />
                     Not available / closed / past
                   </div>
                 </div>
                 {form.appointment_date && (
-                  <p className="mt-3 text-sm text-parish-blue font-medium">
+                  <p className="mt-3 text-sm font-medium text-[#0f2337]">
                     Selected:{' '}
                     {new Date(form.appointment_date + 'T12:00:00').toLocaleDateString(undefined, {
                       weekday: 'long',
@@ -570,12 +594,12 @@ export default function Appointment() {
                   </p>
                 )}
               </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Select Time Slot</label>
+            </section>
+            <section className="min-w-0 rounded-[24px] border border-slate-200 bg-[#f8fafc] p-4 sm:p-5">
+              <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Select Time Slot</h3>
               {form.appointment_date ? (
                 loadingSlots ? (
-                  <div className="text-sm text-gray-600 border border-dashed border-gray-300 rounded-lg p-4">
+                  <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">
                     Loading available time slots...
                   </div>
                 ) : slotItems.length > 0 ? (
@@ -585,7 +609,7 @@ export default function Appointment() {
                       ['Afternoon', slotItems.filter((slot) => slot.time >= '13:00:00')],
                     ].map(([period, periodSlots]) => periodSlots.length > 0 && (
                       <div key={period}>
-                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">{period}</p>
+                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{period}</p>
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                           {periodSlots.map((slot) => {
                       const isSelected = form.appointment_time === slot.time;
@@ -598,12 +622,12 @@ export default function Appointment() {
                           disabled={!isAvailable}
                           className={`w-full px-4 py-3 rounded-lg border text-sm font-medium transition text-left ${
                             isAvailable
-                              ? 'bg-green-50 border-green-300 text-green-800 hover:bg-green-100'
+                              ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
                               : isBooked
                                 ? 'cursor-not-allowed bg-red-50 border-red-300 text-red-800'
-                                : 'cursor-not-allowed bg-gray-100 border-gray-300 text-gray-500'
+                                : 'cursor-not-allowed border-slate-300 bg-slate-100 text-slate-500'
                           } ${
-                            isSelected && isAvailable ? 'ring-2 ring-green-500' : ''
+                            isSelected && isAvailable ? 'ring-2 ring-emerald-500' : ''
                           }`}
                           onClick={() => {
                             if (isAvailable) setForm({ ...form, appointment_time: slot.time });
@@ -611,7 +635,7 @@ export default function Appointment() {
                         >
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-base">{formatSlotTime(slot.time)}</span>
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${isAvailable ? 'bg-green-200 text-green-900' : isBooked ? 'bg-red-200 text-red-900' : 'bg-gray-200 text-gray-700'}`}>
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${isAvailable ? 'bg-emerald-200 text-emerald-900' : isBooked ? 'bg-red-200 text-red-900' : 'bg-slate-200 text-slate-700'}`}>
                               {isAvailable ? 'Available' : isBooked ? 'Booked' : 'Not available'}
                             </span>
                           </div>
@@ -623,39 +647,47 @@ export default function Appointment() {
                     ))}
                   </div>
                 ) : (
-                  <div className="bg-red-50 text-red-700 p-4 rounded-lg text-sm border border-red-200">
+                  <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                     No open time slots remain for this date. Choose another green date on the calendar.
                   </div>
                 )
               ) : (
-                <div className="text-sm text-gray-500 border border-dashed border-gray-300 rounded-lg p-4">
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500">
                   Pick a green date on the calendar to see available time slots.
                 </div>
               )}
-            </div>
+            </section>
           </div>}
           {currentStep === APPOINTMENT_REVIEW_STEP && (
-            <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <h3 className="font-semibold text-parish-blue">Review Appointment Request</h3>
-              <dl className="grid gap-3 sm:grid-cols-2 text-sm">
-                <div><dt className="text-gray-500">Full Name</dt><dd className="font-medium">{form.fullname}</dd></div>
-                <div><dt className="text-gray-500">Email</dt><dd className="font-medium break-words">{form.email}</dd></div>
-                <div><dt className="text-gray-500">Contact Number</dt><dd className="font-medium">{form.phone}</dd></div>
-                <div><dt className="text-gray-500">Address</dt><dd className="font-medium">{form.address}</dd></div>
-                <div><dt className="text-gray-500">Purpose</dt><dd className="font-medium">{purposeValue}</dd></div>
-                <div><dt className="text-gray-500">Appointment ID</dt><dd className="font-medium">Generated on submission</dd></div>
-                <div><dt className="text-gray-500">Appointment Date</dt><dd className="font-medium">{new Date(form.appointment_date + 'T12:00:00').toLocaleDateString()}</dd></div>
-                <div><dt className="text-gray-500">Appointment Time</dt><dd className="font-medium">{formatSlotTime(form.appointment_time)}</dd></div>
+            <section className="rounded-[24px] border border-[#e8dfd0] bg-[#fffaf0] p-4 sm:p-5">
+              <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#9a8666]">Review Appointment Request</h3>
+              <dl className="grid min-w-0 gap-3 sm:grid-cols-2">
+                {[
+                  ['Full Name', form.fullname],
+                  ['Email Address', form.email],
+                  ['Contact Number', form.phone],
+                  ['Address', form.address],
+                  ['Purpose', purposeValue],
+                  ['Appointment ID', 'Generated on submission'],
+                  ['Appointment Date', new Date(form.appointment_date + 'T12:00:00').toLocaleDateString()],
+                  ['Appointment Time', formatSlotTime(form.appointment_time)],
+                ].map(([label, value]) => (
+                  <div key={label} className="min-w-0 rounded-2xl border border-[#eee2cd] bg-white p-4">
+                    <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#9a8666]">{label}</dt>
+                    <dd className="mt-1 break-words text-sm font-medium text-[#2f2a22]">{value}</dd>
+                  </div>
+                ))}
               </dl>
-                </div>
+            </section>
           )}
-          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-            {currentStep > 0 && <button type="button" className="btn-outline" onClick={backStep}>Back / Edit</button>}
+          <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:justify-end">
+            {currentStep > 0 && <button type="button" className="btn-outline sm:min-w-32" onClick={backStep}>Back / Edit</button>}
             {currentStep < APPOINTMENT_REVIEW_STEP ? (
-              <button type="button" className="btn-primary" onClick={nextStep}>{currentStep === 2 ? 'Continue to Review' : 'Continue'}</button>
+              <button type="button" className="btn-primary sm:min-w-36" onClick={nextStep}>{currentStep === 2 ? 'Continue to Review' : 'Continue'}</button>
             ) : (
-              <button type="button" className="btn-primary" onClick={handleSubmit} disabled={submitting} aria-label="Submit appointment request">{submitting ? 'Submitting...' : 'Submit Request'}</button>
+              <button type="button" className="btn-primary sm:min-w-36" onClick={handleSubmit} disabled={submitting} aria-label="Submit appointment request">{submitting ? 'Submitting...' : 'Submit Request'}</button>
             )}
+          </div>
           </div>
         </form>
       )}

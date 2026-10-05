@@ -22,6 +22,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState(null);
   const [welcomeMessage, setWelcomeMessage] = useState('');
+  const [profilePictureVersion, setProfilePictureVersion] = useState(0);
 
   const checkInFlight = useRef(null);
 
@@ -71,6 +72,10 @@ export function AuthProvider({ children }) {
   const clearAuth = useCallback(() => {
     saveUser(null);
     setLoading(false);
+  }, []);
+
+  const refreshProfilePicture = useCallback(() => {
+    setProfilePictureVersion(Date.now());
   }, []);
 
   useEffect(() => {
@@ -125,6 +130,8 @@ export function AuthProvider({ children }) {
         isLoading: loading,
         authError,
         welcomeMessage,
+        profilePictureVersion,
+        refreshProfilePicture,
         dismissWelcome: () => setWelcomeMessage(''),
         login,
         logout,

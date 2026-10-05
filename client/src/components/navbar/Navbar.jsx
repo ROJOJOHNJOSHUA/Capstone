@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getDashboardByRole, normalizeRole } from '../../utils/roleRedirect';
 import { useNotifications } from '../../context/NotificationContext';
 import { useSettings } from '../../context/SettingsContext';
+import { API_BASE } from '../../utils/constants';
 import Modal from '../forms/Modal';
 import LoginModal from '../forms/LoginModal';
 import RegisterModal from '../forms/RegisterModal';
@@ -54,7 +55,7 @@ function ParishionerMenuItem({ to, icon: Icon, children, badge, onSelect }) {
 }
 
 export default function Navbar({ dashboard = false, isSidebarOpen = false, onSidebarToggle = () => {} }) {
-  const { user, logout, isAdmin, login } = useAuth();
+  const { user, logout, isAdmin, login, profilePictureVersion } = useAuth();
   const { unreadCount } = useNotifications();
   const { t } = useSettings();
   const navigate = useNavigate();
@@ -68,6 +69,7 @@ export default function Navbar({ dashboard = false, isSidebarOpen = false, onSid
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profilePictureUnavailable, setProfilePictureUnavailable] = useState(false);
   const profileRef = useRef(null);
   const initials = (user?.fullname || '')
     .split(' ')
@@ -75,6 +77,11 @@ export default function Navbar({ dashboard = false, isSidebarOpen = false, onSid
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() || '')
     .join('') || 'U';
+  const profilePictureUrl = `${API_BASE}/auth/profile-picture.php?v=${profilePictureVersion}`;
+
+  useEffect(() => {
+    setProfilePictureUnavailable(false);
+  }, [profilePictureVersion, user?.id]);
 
   const closeProfile = () => setProfileOpen(false);
 
@@ -269,7 +276,16 @@ export default function Navbar({ dashboard = false, isSidebarOpen = false, onSid
                         }`
                   }`}
                 >
-                  <span className="leading-none">{initials}</span>
+                  {!profilePictureUnavailable && (
+                    <img
+                      src={profilePictureUrl}
+                      alt=""
+                      crossOrigin="use-credentials"
+                      onError={() => setProfilePictureUnavailable(true)}
+                      className="absolute inset-0 h-full w-full rounded-full object-cover"
+                    />
+                  )}
+                  {profilePictureUnavailable && <span className="leading-none">{initials}</span>}
                 </button>
 
                 {profileOpen && (
@@ -290,8 +306,16 @@ export default function Navbar({ dashboard = false, isSidebarOpen = false, onSid
                     >
                       {isAdmin ? (
                         <div className="flex items-center gap-3">
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#b18a45] text-base font-semibold text-white shadow-sm">
-                            {initials}
+                          <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#b18a45] text-base font-semibold text-white shadow-sm">
+                            {profilePictureUnavailable ? initials : (
+                              <img
+                                src={profilePictureUrl}
+                                alt=""
+                                crossOrigin="use-credentials"
+                                onError={() => setProfilePictureUnavailable(true)}
+                                className="h-full w-full object-cover"
+                              />
+                            )}
                           </div>
                           <div className="min-w-0">
                             <p className="truncate font-display text-lg leading-tight text-[#1f3342]">{user.fullname}</p>
@@ -300,8 +324,16 @@ export default function Navbar({ dashboard = false, isSidebarOpen = false, onSid
                         </div>
                       ) : (
                         <div className="flex items-center gap-3">
-                          <span className="flex items-center justify-center w-11 h-11 rounded-full bg-[#b18a45] text-white font-semibold text-sm shrink-0 border-2 border-white dark:border-gray-700 shadow-sm">
-                            {initials}
+                          <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#b18a45] text-sm font-semibold text-white shadow-sm dark:border-gray-700">
+                            {profilePictureUnavailable ? initials : (
+                              <img
+                                src={profilePictureUrl}
+                                alt=""
+                                crossOrigin="use-credentials"
+                                onError={() => setProfilePictureUnavailable(true)}
+                                className="h-full w-full object-cover"
+                              />
+                            )}
                           </span>
                           <div className="min-w-0">
                             <p className="text-sm font-semibold leading-tight text-[#273746] dark:text-white truncate">

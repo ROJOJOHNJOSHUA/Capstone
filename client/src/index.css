@@ -152,6 +152,39 @@ html {
     background-color: #ead8ad;
     color: #604a25;
   }
+  .organization-tree-canvas {
+    zoom: 0.26;
+  }
+  @media (min-width: 360px) {
+    .organization-tree-canvas {
+      zoom: 0.3;
+    }
+  }
+  @media (min-width: 400px) {
+    .organization-tree-canvas {
+      zoom: 0.34;
+    }
+  }
+  @media (min-width: 480px) {
+    .organization-tree-canvas { zoom: 0.42; }
+  }
+  @media (min-width: 640px) {
+    .organization-tree-canvas { zoom: 0.56; }
+  }
+  @media (min-width: 768px) {
+    .organization-tree-canvas { zoom: 0.7; }
+  }
+  @media (min-width: 900px) {
+    .organization-tree-canvas { zoom: 0.82; }
+  }
+  @media (min-width: 960px) {
+    .organization-tree-canvas { zoom: 0.9; }
+  }
+  @media (min-width: 1024px) {
+    .organization-tree-canvas {
+      zoom: 1;
+    }
+  }
   .badge-pending {
     @apply bg-yellow-100 text-yellow-800 px-2.5 py-0.5 rounded-full text-xs font-medium dark:bg-yellow-900/40 dark:text-yellow-200;
   }

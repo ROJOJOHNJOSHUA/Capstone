@@ -104,6 +104,14 @@ export const getMe = () => api.get('/auth/me.php');
 export const updateProfile = (data) => api.patch('/auth/profile.php', data);
 export const changePassword = (data) => api.patch('/auth/profile.php', data);
 export const checkSession = () => api.get('/auth/check.php');
+export const getProfilePicture = () => api.get('/auth/profile-picture.php', { responseType: 'blob' });
+export const uploadProfilePicture = (file) => {
+  const formData = new FormData();
+  formData.append('profile_picture', file);
+  return api.post('/auth/profile-picture.php', formData, {
+    headers: { 'Content-Type': false },
+  });
+};
 export const getUsers = (params) => api.get('/auth/users.php', { params });
 export const createUser = (data) => api.post('/auth/users.php', data);
 export const updateUser = (data) => api.put('/auth/users.php', data);

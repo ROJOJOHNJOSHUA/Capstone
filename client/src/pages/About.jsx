@@ -147,8 +147,8 @@ function FinanceCouncilMembers() {
 
 function OrganizationTree() {
   return (
-    <div className="-mt-12 overflow-x-auto pb-3">
-      <div className="mx-auto min-w-[1000px] px-4">
+    <div className="organization-tree-viewport overflow-hidden pb-3 lg:-mt-12 lg:overflow-x-auto">
+      <div className="organization-tree-canvas mx-auto min-w-[1000px] px-4">
         <div className="flex flex-col items-center">
           <OrganizationProfile member={organizationMembers.priest} position={organizationMembers.priest.position} emphasis />
           <div className="h-4 w-px bg-[#d7b57a]" aria-hidden="true" />
@@ -207,28 +207,28 @@ export default function About() {
     <div className="min-h-screen bg-[#faf8f1] text-[#4e555a]">
       <Navbar />
       <main>
-        <section className="mx-auto max-w-7xl px-4 py-2 sm:px-6 md:py-3 lg:px-8">
-          <div className="mt-3">
-            <article className="min-h-[170px] w-full rounded-xl border border-[#e6ddcf] bg-white p-6 text-center shadow-sm sm:p-10">
-              <section className="mt-8 pt-7" aria-labelledby="organization-title">
+        <section className="mx-auto max-w-7xl px-3 py-1 sm:px-6 sm:py-2 md:py-3 lg:px-8">
+          <div className="mt-2 sm:mt-3">
+            <article className="w-full rounded-xl border border-[#e6ddcf] bg-white p-2 text-center shadow-sm sm:p-6 lg:p-10">
+              <section className="mt-1 pt-1 sm:mt-6 sm:pt-4" aria-labelledby="organization-title">
                  <OrganizationTree />
               </section>
             </article>
           </div>
-          <div className="mt-5 grid items-stretch gap-4 sm:grid-cols-2">
-            <article className="min-h-[190px] rounded-xl border border-[#e6ddcf] bg-white p-6 text-center shadow-sm sm:p-8">
+          <div className="mt-3 grid items-stretch gap-3 sm:mt-5 sm:gap-4 sm:grid-cols-2">
+            <article className="rounded-xl border border-[#e6ddcf] bg-white p-5 text-center shadow-sm sm:min-h-[190px] sm:p-8">
               <h2 className="mt-1 font-display text-xl text-[#273746] sm:text-2xl">Mission</h2>
-              <p className="mx-auto mt-3 max-w-xl text-xs font-semibold leading-7 text-[#6e7274] sm:text-sm sm:leading-8">Our mission is to spread the Gospel of Jesus Christ, strengthen the faith of our community, and serve others with compassion, love, and dedication.</p>
+              <p className="mx-auto mt-2 max-w-xl text-sm font-medium leading-6 text-[#6e7274] sm:mt-3 sm:text-sm sm:font-semibold sm:leading-8">Our mission is to spread the Gospel of Jesus Christ, strengthen the faith of our community, and serve others with compassion, love, and dedication.</p>
             </article>
-            <article className="min-h-[190px] rounded-xl border border-[#e6ddcf] bg-white p-6 text-center shadow-sm sm:p-8">
+            <article className="rounded-xl border border-[#e6ddcf] bg-white p-5 text-center shadow-sm sm:min-h-[190px] sm:p-8">
               <h2 className="mt-1 font-display text-xl text-[#273746] sm:text-2xl">Vision</h2>
-              <p className="mx-auto mt-3 max-w-xl text-xs font-semibold leading-7 text-[#6e7274] sm:text-sm sm:leading-8">We envision a united Catholic community where every person grows in faith, actively participates in parish life, and serves others with love and compassion.</p>
+              <p className="mx-auto mt-2 max-w-xl text-sm font-medium leading-6 text-[#6e7274] sm:mt-3 sm:text-sm sm:font-semibold sm:leading-8">We envision a united Catholic community where every person grows in faith, actively participates in parish life, and serves others with love and compassion.</p>
             </article>
           </div>
-          <div className="mt-8 rounded-xl border border-[#e6ddcf] bg-white p-5 shadow-sm sm:p-7"><p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#b18a45]">Weekly liturgy</p><h2 className="mt-1 font-display text-2xl text-[#273746]">Parish Mass Schedule</h2><div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-7">{schedule.map(([day, time]) => <div key={day} className={`rounded-lg border p-3 ${day === 'Sunday' ? 'border-[#b18a45] bg-[#d7b57a] text-[#273746]' : time === 'Closed' ? 'border-gray-200 bg-gray-100 text-gray-400' : 'border-[#e6ddcf] bg-[#faf8f1] text-[#273746]'}`}><p className="text-[9px] font-bold uppercase tracking-wider">{day}</p><p className="mt-2 text-xs font-bold">{time}</p></div>)}</div></div>
+          <div className="mt-4 rounded-xl border border-[#e6ddcf] bg-white p-4 shadow-sm sm:mt-8 sm:p-7"><p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#b18a45]">Weekly liturgy</p><h2 className="mt-1 font-display text-xl text-[#273746] sm:text-2xl">Parish Mass Schedule</h2><div className="mt-4 grid grid-cols-2 gap-2 sm:mt-5 sm:grid-cols-3 lg:grid-cols-7">{schedule.map(([day, time]) => <div key={day} className={`min-w-0 rounded-lg border p-2.5 sm:p-3 ${day === 'Sunday' ? 'border-[#b18a45] bg-[#d7b57a] text-[#273746]' : time === 'Closed' ? 'border-gray-200 bg-gray-100 text-gray-400' : 'border-[#e6ddcf] bg-[#faf8f1] text-[#273746]'}`}><p className="text-[9px] font-bold uppercase tracking-wider">{day}</p><p className="mt-1 break-words text-xs font-bold sm:mt-2">{time}</p></div>)}</div></div>
 
-          <div className="mt-5 grid items-stretch gap-4 sm:grid-cols-2"><article className="min-h-[150px] rounded-xl border border-[#e6ddcf] bg-white p-5 shadow-sm sm:p-7"><p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#b18a45]">Parish location</p><h2 className="mt-1 font-display text-xl text-[#273746]">{PARISH_LOCATION.name}</h2><p className="mt-2 text-xs text-[#6e7274]">{PARISH_LOCATION.address}</p><a href="https://www.google.com/maps?q=Holy%20Family%20Parish%20Putiao%20Pilar%20Sorsogon" target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex text-xs font-semibold text-[#a6813f]">Open in Google Maps →</a></article><article className="min-h-[150px] rounded-xl border border-[#e6ddcf] bg-white p-5 shadow-sm sm:p-7"><p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#b18a45]">Office hours</p><p className="mt-2 text-xs leading-relaxed text-[#6e7274]">Wednesday – Monday<br />8:00 AM – 5:00 PM<br /><span className="text-[#9a9c9d]">Closed Tuesdays</span></p></article></div>
-        <div className="mt-4 grid items-stretch gap-3 sm:grid-cols-3">
+          <div className="mt-3 grid items-stretch gap-3 sm:mt-5 sm:gap-4 sm:grid-cols-2"><article className="rounded-xl border border-[#e6ddcf] bg-white p-4 shadow-sm sm:min-h-[150px] sm:p-7"><p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#b18a45]">Parish location</p><h2 className="mt-1 font-display text-xl text-[#273746]">{PARISH_LOCATION.name}</h2><p className="mt-2 text-xs leading-5 text-[#6e7274]">{PARISH_LOCATION.address}</p><a href="https://www.google.com/maps?q=Holy%20Family%20Parish%20Putiao%20Pilar%20Sorsogon" target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex text-xs font-semibold text-[#a6813f]">Open in Google Maps →</a></article><article className="rounded-xl border border-[#e6ddcf] bg-white p-4 shadow-sm sm:min-h-[150px] sm:p-7"><p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#b18a45]">Office hours</p><p className="mt-2 text-xs leading-relaxed text-[#6e7274]">Wednesday – Monday<br />8:00 AM – 5:00 PM<br /><span className="text-[#9a9c9d]">Closed Tuesdays</span></p></article></div>
+        <div className="mt-3 grid items-stretch gap-3 sm:mt-4 sm:grid-cols-3">
           {infoCards.map(([title, detail, icon]) => (
             title === 'Parish History' || title === 'Our Leadership' || title === 'Donation' ? (
               <button
@@ -239,14 +239,14 @@ export default function About() {
                   if (title === 'Our Leadership') setLeadershipOpen(true);
                   if (title === 'Donation') setDonationOpen(true);
                 }}
-                className="flex min-h-[150px] h-full w-full flex-col rounded-xl border border-[#e6ddcf] bg-white px-4 py-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#d7b57a] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#b18a45]/40"
+                className="flex min-h-[130px] h-full w-full flex-col rounded-xl border border-[#e6ddcf] bg-white px-4 py-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#d7b57a] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#b18a45]/40 sm:min-h-[150px]"
               >
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#d7b57a] text-xs text-[#b18a45]">{icon}</span>
                 <h2 className="mt-3 font-display text-base text-[#273746]">{title}</h2>
                 <p className="mt-1 text-[11px] leading-relaxed text-[#7a7d7f]">{detail}</p>
               </button>
             ) : (
-              <article key={title} className="flex min-h-[150px] h-full flex-col rounded-xl border border-[#e6ddcf] bg-white px-4 py-4 shadow-sm"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#d7b57a] text-xs text-[#b18a45]">{icon}</span><h2 className="mt-3 font-display text-base text-[#273746]">{title}</h2><p className="mt-1 text-[11px] leading-relaxed text-[#7a7d7f]">{detail}</p></article>
+              <article key={title} className="flex min-h-[130px] h-full flex-col rounded-xl border border-[#e6ddcf] bg-white px-4 py-4 shadow-sm sm:min-h-[150px]"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#d7b57a] text-xs text-[#b18a45]">{icon}</span><h2 className="mt-3 font-display text-base text-[#273746]">{title}</h2><p className="mt-1 text-[11px] leading-relaxed text-[#7a7d7f]">{detail}</p></article>
             )
           ))}
           </div>
