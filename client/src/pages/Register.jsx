@@ -8,6 +8,7 @@ import {
   normalizePhilippineMobileInput,
   validatePhilippineMobileDigits,
 } from '../utils/philippinePhone';
+import { getPasswordValidationError } from '../utils/passwordValidation';
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -47,6 +48,11 @@ export default function Register() {
     const phoneError = validatePhilippineMobileDigits(form.phone);
     if (phoneError) {
       setFieldErrors({ phone: phoneError });
+      return;
+    }
+    const passwordError = getPasswordValidationError(form.password);
+    if (passwordError) {
+      setFieldErrors({ password: passwordError });
       return;
     }
     if (form.password !== form.confirm) {
@@ -102,8 +108,10 @@ export default function Register() {
           value={form[name]}
           onChange={handleChange}
           required={required}
+          minLength={name === 'password' || name === 'confirm' ? 8 : undefined}
         />
       )}
+      {(name === 'password' || name === 'confirm') && <p className="mt-1 text-[11px] text-slate-500">Use at least 8 characters, including letters and numbers.</p>}
       {name === 'phone' && <p className="mt-1 text-[11px] text-slate-500">Enter 10 digits, for example +63 9XXXXXXXXX.</p>}
       {fieldErrors[name] && <p className="mt-1 text-xs text-red-600">{fieldErrors[name]}</p>}
     </div>

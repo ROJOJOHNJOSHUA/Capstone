@@ -16,6 +16,7 @@ import {
   normalizePhilippineMobileInput,
   validatePhilippineMobileDigits,
 } from '../../utils/philippinePhone';
+import { getPasswordValidationError } from '../../utils/passwordValidation';
 
 export default function RegisterModal({ isOpen, onClose, onRegistered, onLoginClick }) {
   const { register } = useAuth();
@@ -65,6 +66,11 @@ export default function RegisterModal({ isOpen, onClose, onRegistered, onLoginCl
     const phoneError = validatePhilippineMobileDigits(form.phone);
     if (phoneError) {
       setFieldErrors({ phone: phoneError });
+      return;
+    }
+    const passwordError = getPasswordValidationError(form.password);
+    if (passwordError) {
+      setFieldErrors({ password: passwordError });
       return;
     }
     if (form.password !== form.confirm) {
@@ -127,11 +133,13 @@ export default function RegisterModal({ isOpen, onClose, onRegistered, onLoginCl
           value={form[name]}
           onChange={handleChange}
           required={required}
+          minLength={name === 'password' || name === 'confirm' ? 8 : undefined}
           className={`w-full rounded-xl border bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-[#d7b57a] focus:bg-white focus:ring-2 focus:ring-[#d7b57a]/20 ${
             fieldErrors[name] ? 'border-red-400 bg-red-50' : 'border-slate-200'
           }`}
         />
       )}
+      {(name === 'password' || name === 'confirm') && <p className="mt-1 text-[11px] text-slate-500">Use at least 8 characters, including letters and numbers.</p>}
       {name === 'phone' && <p className="mt-1 text-[11px] text-slate-500"></p>}
       {fieldErrors[name] && <p className="mt-1 text-xs text-red-600">{fieldErrors[name]}</p>}
     </div>

@@ -5,6 +5,7 @@ import LoadingSpinner from '../components/forms/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { changePassword, getMe, getSettings, updateProfile, updateSettings } from '../services/api';
+import { getPasswordValidationError } from '../utils/passwordValidation';
 
 const NOTIFICATION_PREFS_KEY = 'hf_parish_notification_prefs';
 
@@ -83,8 +84,15 @@ export default function Settings() {
 
   const handlePasswordSave = async (e) => {
     e.preventDefault();
+    const passwordError = getPasswordValidationError(newPassword);
+    if (passwordError) {
+      setError(passwordError);
+      setMessage('');
+      return;
+    }
     if (newPassword !== confirmPassword) {
       setError(t('settings.passwordMismatch'));
+      setMessage('');
       return;
     }
     setSaving(true);
@@ -223,8 +231,9 @@ export default function Settings() {
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#d7b57a] focus:bg-white focus:ring-2 focus:ring-[#d7b57a]/20"
                   required
-                  minLength={6}
+                  minLength={8}
                 />
+                <p className="mt-1 text-xs text-slate-500">Use at least 8 characters, including letters and numbers.</p>
               </div>
 
               <div>
@@ -235,7 +244,7 @@ export default function Settings() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#d7b57a] focus:bg-white focus:ring-2 focus:ring-[#d7b57a]/20"
                   required
-                  minLength={6}
+                  minLength={8}
                 />
               </div>
 

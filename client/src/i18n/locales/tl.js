@@ -86,7 +86,7 @@ export default {
   'profile.subtitle': 'Tingnan at i-update ang iyong parish account mula sa rehistro.',
   'profile.registeredInfo': 'Impormasyon ng iyong account',
   'profile.registeredInfoDesc': 'Mga detalye mula noong nagrehistro ka. Maaaring palitan ang email sa Settings.',
-  'profile.editTitle': 'I-edit ang profile',
+  'profile.editTitle': 'I-edit ang iyong impormasyon',
   'profile.editDesc': 'I-update ang pangalan, numero ng telepono, at address.',
   'profile.fullName': 'Buong pangalan',
   'profile.phone': 'Numero ng telepono',

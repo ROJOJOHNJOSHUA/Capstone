@@ -6,6 +6,7 @@ import LoadingSpinner from '../../components/forms/LoadingSpinner';
 import Modal from '../../components/forms/Modal';
 import { useSettings } from '../../context/SettingsContext';
 import { createUser, deleteUser, getUsers, updateUser } from '../../services/api';
+import { getPasswordValidationError } from '../../utils/passwordValidation';
 
 const EMPTY_FORM = {
   id: null,
@@ -133,8 +134,15 @@ export default function AdminUsers() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSaving(true);
     setError('');
+    if (form.password) {
+      const passwordError = getPasswordValidationError(form.password);
+      if (passwordError) {
+        setError(passwordError);
+        return;
+      }
+    }
+    setSaving(true);
     try {
       const payload = {
         fullname: form.fullname.trim(),
@@ -409,9 +417,9 @@ export default function AdminUsers() {
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
                 required={!form.id}
-                minLength={form.password ? 8 : undefined}
+                minLength={!form.id || form.password ? 8 : undefined}
               />
-              <p className="mt-1 text-xs text-gray-500">{t('users.passwordHint')}</p>
+              <p className="mt-1 text-xs text-gray-500">Use at least 8 characters, including letters and numbers.</p>
             </div>
           </div>
           <div className="flex gap-2 pt-2">

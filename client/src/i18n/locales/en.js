@@ -86,7 +86,7 @@ export default {
   'profile.subtitle': 'View and update your parish account details from registration.',
   'profile.registeredInfo': 'Your account information',
   'profile.registeredInfoDesc': 'Details collected when you registered. Email can be changed in Settings.',
-  'profile.editTitle': 'Edit profile',
+  'profile.editTitle': 'Edit your information',
   'profile.editDesc': 'Update your name, phone number, and address.',
   'profile.fullName': 'Full name',
   'profile.phone': 'Phone number',

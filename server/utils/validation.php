@@ -81,6 +81,17 @@ function allowedStatuses(): array
     return ['Pending', 'Under Review', 'Approved', 'Paid', 'Rejected', 'Completed', 'Cancelled'];
 }
 
+function passwordStrengthError(string $password): ?string
+{
+    if (!preg_match('/[A-Za-z]/', $password) || !preg_match('/[0-9]/', $password)) {
+        return 'Password should be a combination of letter and number.';
+    }
+    if (strlen($password) < 8) {
+        return 'Password must be at least 8 characters.';
+    }
+    return null;
+}
+
 function validateRegistration(array $data): array
 {
     $errors = validateRequired(['fullname', 'email', 'phone', 'password'], $data);
@@ -93,8 +104,11 @@ function validateRegistration(array $data): array
         $errors['phone'] = 'Please enter a valid Philippine mobile number (e.g., 09XXXXXXXXX or +639XXXXXXXXX).';
     }
 
-    if (!empty($data['password']) && strlen($data['password']) < 8) {
-        $errors['password'] = 'Password must be at least 8 characters.';
+    if (isset($data['password']) && (string) $data['password'] !== '') {
+        $passwordError = passwordStrengthError((string) $data['password']);
+        if ($passwordError !== null) {
+            $errors['password'] = $passwordError;
+        }
     }
 
     if (isset($data['confirm_password']) && ($data['password'] ?? '') !== $data['confirm_password']) {
@@ -133,8 +147,8 @@ function validatePasswordChange(array $data): array
 
     if ($newPassword === '') {
         $errors['new_password'] = 'New password is required.';
-    } elseif (strlen($newPassword) < 8) {
-        $errors['new_password'] = 'Password must be at least 8 characters.';
+    } elseif (($passwordError = passwordStrengthError($newPassword)) !== null) {
+        $errors['new_password'] = $passwordError;
     }
 
     if (isset($data['confirm_password']) && $data['confirm_password'] !== '' && $newPassword !== $data['confirm_password']) {
@@ -161,8 +175,11 @@ function validateAdminUserCreate(array $data): array
         $errors['phone'] = 'Please enter a valid Philippine mobile number (e.g., 09XXXXXXXXX or +639XXXXXXXXX).';
     }
 
-    if (!empty($data['password']) && strlen($data['password']) < 8) {
-        $errors['password'] = 'Password must be at least 8 characters.';
+    if (isset($data['password']) && (string) $data['password'] !== '') {
+        $passwordError = passwordStrengthError((string) $data['password']);
+        if ($passwordError !== null) {
+            $errors['password'] = $passwordError;
+        }
     }
 
     $role = strtolower(trim((string) ($data['role'] ?? 'user')));
@@ -209,8 +226,9 @@ function validateAdminUserUpdate(array $data): array
     }
 
     if (isset($data['password']) && $data['password'] !== '') {
-        if (strlen((string) $data['password']) < 8) {
-            $errors['password'] = 'Password must be at least 8 characters.';
+        $passwordError = passwordStrengthError((string) $data['password']);
+        if ($passwordError !== null) {
+            $errors['password'] = $passwordError;
         }
     }
 

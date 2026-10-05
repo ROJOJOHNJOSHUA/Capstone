@@ -38,9 +38,16 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [profilePicture, setProfilePicture] = useState('');
   const [pendingProfilePicture, setPendingProfilePicture] = useState(null);
+  const [pendingProfilePicturePreview, setPendingProfilePicturePreview] = useState('');
   const [message, setMessage] = useState({ type: '', text: '' });
   const [errors, setErrors] = useState({});
   const profilePictureInput = useRef(null);
+
+  useEffect(() => {
+    const dismissMessage = () => setMessage({ type: '', text: '' });
+    document.addEventListener('click', dismissMessage, true);
+    return () => document.removeEventListener('click', dismissMessage, true);
+  }, []);
 
   useEffect(() => {
     getMe()
@@ -82,6 +89,10 @@ export default function Profile() {
     if (profilePicture) URL.revokeObjectURL(profilePicture);
   }, [profilePicture]);
 
+  useEffect(() => () => {
+    if (pendingProfilePicturePreview) URL.revokeObjectURL(pendingProfilePicturePreview);
+  }, [pendingProfilePicturePreview]);
+
   const memberSince = account.created_at
     ? new Date(account.created_at).toLocaleDateString(undefined, {
         year: 'numeric',
@@ -100,7 +111,7 @@ export default function Profile() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleProfilePictureChange = (event) => {
+  const handleProfilePictureChange = async (event) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
@@ -114,9 +125,51 @@ export default function Profile() {
       return;
     }
 
-    setMessage({ type: '', text: '' });
-    setPendingProfilePicture(file);
-    setProfilePicture(URL.createObjectURL(file));
+    const image = new Image();
+    const sourceUrl = URL.createObjectURL(file);
+    image.src = sourceUrl;
+    try {
+      await image.decode();
+    } catch {
+      URL.revokeObjectURL(sourceUrl);
+      setMessage({ type: 'error', text: 'Could not read this image. Please choose another file.' });
+      return;
+    }
+    const smallestDimension = Math.min(image.naturalWidth, image.naturalHeight);
+    if (smallestDimension < 256) {
+      URL.revokeObjectURL(sourceUrl);
+      setMessage({ type: 'error', text: 'Choose a sharper image with at least 256 pixels on its shortest side.' });
+      return;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const context = canvas.getContext('2d');
+    if (!context) {
+      URL.revokeObjectURL(sourceUrl);
+      setMessage({ type: 'error', text: 'Your browser could not prepare the cropped image.' });
+      return;
+    }
+    const sourceSize = smallestDimension;
+    const sourceX = (image.naturalWidth - sourceSize) / 2;
+    const sourceY = (image.naturalHeight - sourceSize) / 2;
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
+    context.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, 256, 256);
+    URL.revokeObjectURL(sourceUrl);
+
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        setMessage({ type: 'error', text: 'Could not create the cropped image. Please try again.' });
+        return;
+      }
+      const croppedFile = new File([blob], 'profile-picture.jpg', { type: 'image/jpeg' });
+      const previewUrl = URL.createObjectURL(blob);
+      setMessage({ type: '', text: '' });
+      setPendingProfilePicture(croppedFile);
+      setPendingProfilePicturePreview(previewUrl);
+    }, 'image/jpeg', 0.94);
   };
 
   const handleSubmit = async (e) => {
@@ -132,10 +185,16 @@ export default function Profile() {
         phone: form.phone.trim(),
         address: form.address.trim(),
       };
-      await updateProfile(payload);
-      profileDetailsSaved = true;
-      setSaved(payload);
-      setForm(payload);
+      const profileDetailsChanged = payload.fullname !== saved.fullname
+        || payload.phone !== saved.phone
+        || payload.address !== saved.address;
+      const profilePictureChanged = Boolean(pendingProfilePicture);
+      if (profileDetailsChanged) {
+        await updateProfile(payload);
+        profileDetailsSaved = true;
+        setSaved(payload);
+        setForm(payload);
+      }
       if (pendingProfilePicture) {
         await uploadProfilePicture(pendingProfilePicture);
         profilePictureSaved = true;
@@ -143,9 +202,15 @@ export default function Profile() {
         const pictureResponse = await getProfilePicture();
         setProfilePicture(URL.createObjectURL(pictureResponse.data));
         setPendingProfilePicture(null);
+        setPendingProfilePicturePreview('');
       }
       await loadUser();
-      setMessage({ type: 'success', text: t('profile.updated') });
+      setMessage({
+        type: 'success',
+        text: profilePictureChanged && !profileDetailsChanged
+          ? 'Profile picture updated successfully.'
+          : t('profile.updated'),
+      });
     } catch (err) {
       setMessage({
         type: 'error',
@@ -189,7 +254,8 @@ export default function Profile() {
       <div className="max-w-6xl">
         <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
           <section className="rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-5 shadow-sm sm:p-6">
-            <div className="mb-5 flex justify-center">
+            <div className="mb-5">
+              <div className="flex justify-center">
               <div className="relative">
                 <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-4 border-[#f0e1bc] bg-[#b18a45] text-2xl font-semibold text-white shadow-sm">
                   {profilePicture
@@ -217,10 +283,14 @@ export default function Profile() {
                   </svg>
                 </button>
               </div>
+              </div>
               {pendingProfilePicture && (
-                <p className="mt-2 text-center text-xs font-medium text-[#8a6b34]">
-                  New photo selected. Click Save Changes to save it.
-                </p>
+                <div className="mt-3 flex items-center justify-center gap-3 rounded-xl border border-[#e7dfd2] bg-[#f8f4ec] p-3">
+                  <img src={pendingProfilePicturePreview} alt="Selected profile picture preview" className="h-12 w-12 rounded-full border-2 border-[#f0e1bc] object-cover" />
+                  <p className="text-xs font-medium text-[#8a6b34]">
+                    New photo selected. Click Save Changes to apply it.
+                  </p>
+                </div>
               )}
             </div>
             <div className="grid gap-3">
