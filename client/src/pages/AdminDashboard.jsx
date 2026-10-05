@@ -59,14 +59,19 @@ export default function AdminDashboard() {
     };
   }, []);
   if (loading) return <DashboardLayout><LoadingSpinner /></DashboardLayout>;
-  const { stats = {}, monthly_chart = [], service_breakdown = [] } = data || {};
+  const { stats = {}, monthly_chart = [], appointment_chart = [], service_breakdown = [] } = data || {};
   const monthlyReservations = Array.from({ length: 6 }, (_, index) => {
     const monthDate = new Date();
     monthDate.setDate(1);
     monthDate.setMonth(monthDate.getMonth() - 5 + index);
     const month = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
     const reservationMonth = monthly_chart.find((item) => item.month === month);
-    return { month, count: Number(reservationMonth?.count || 0) };
+    const appointmentMonth = appointment_chart.find((item) => item.month === month);
+    return {
+      month,
+      count: Number(reservationMonth?.count || 0),
+      appointments: Number(appointmentMonth?.count || 0),
+    };
   });
   const totalServices = service_breakdown.reduce((sum, item) => sum + Number(item.count || 0), 0);
 
@@ -74,8 +79,8 @@ export default function AdminDashboard() {
     <section className="mb-4 grid gap-4 sm:grid-cols-2 xl:mb-4 xl:shrink-0 xl:grid-cols-4"><Stat label="Pending Reservations" value={stats.pending_reservations} detail="Requires your attention" icon="▣" /><Stat label="Pending Appointments" value={stats.pending_appointments} detail="Requires your attention" icon="◷" /><Stat label="Parish Records" value={stats.total_records} detail="Total records" icon="□" /><Stat label="Total Users" value={stats.total_users} detail="Registered users" icon="♧" /></section>
     <section className="grid gap-5 xl:min-h-0 xl:flex-1 xl:grid-cols-[1fr_1.2fr]">
       <article className="rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-5 shadow-[0_8px_22px_rgba(83,65,34,0.06)] xl:flex xl:min-h-0 xl:flex-col xl:p-4">
-        <div className="flex items-center justify-between"><h2 className="font-display text-lg text-[#273746]">Monthly Reservations</h2><span className="rounded-lg border border-[#e7dfd2] px-3 py-1 text-[10px] text-[#7a7d7f]">Last 6 months</span></div>
-        <div className="mt-5 h-64 xl:mt-3 xl:min-h-0 xl:flex-1"><ResponsiveContainer width="100%" height="100%"><LineChart data={monthlyReservations} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}><defs><linearGradient id="reservationFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#d7b57a" stopOpacity={0.38} /><stop offset="100%" stopColor="#d7b57a" stopOpacity={0.04} /></linearGradient></defs><CartesianGrid stroke="#eee7db" vertical={false} /><XAxis dataKey="month" tick={{ fontSize: 10, fill: '#8a857a' }} axisLine={false} tickLine={false} /><YAxis allowDecimals={false} tick={{ fontSize: 10, fill: '#8a857a' }} axisLine={false} tickLine={false} /><Tooltip contentStyle={{ borderRadius: 10, border: '1px solid #e7dfd2', fontSize: 12 }} /><Area type="monotone" dataKey="count" stroke="none" fill="url(#reservationFill)" /><Line type="monotone" dataKey="count" stroke="#b18a45" strokeWidth={2.5} dot={{ r: 3, fill: '#b18a45', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#b18a45' }} /></LineChart></ResponsiveContainer></div>
+        <div className="flex items-center justify-between"><h2 className="font-display text-lg text-[#273746]">Monthly Requests</h2><span className="rounded-lg border border-[#e7dfd2] px-3 py-1 text-[10px] text-[#7a7d7f]">Last 6 months</span></div>
+        <div className="mt-5 h-64 xl:mt-3 xl:min-h-0 xl:flex-1"><ResponsiveContainer width="100%" height="100%"><LineChart data={monthlyReservations} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}><defs><linearGradient id="reservationFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#d7b57a" stopOpacity={0.38} /><stop offset="100%" stopColor="#d7b57a" stopOpacity={0.04} /></linearGradient></defs><CartesianGrid stroke="#eee7db" vertical={false} /><XAxis dataKey="month" tick={{ fontSize: 10, fill: '#8a857a' }} axisLine={false} tickLine={false} /><YAxis allowDecimals={false} tick={{ fontSize: 10, fill: '#8a857a' }} axisLine={false} tickLine={false} /><Tooltip contentStyle={{ borderRadius: 10, border: '1px solid #e7dfd2', fontSize: 12 }} /><Area type="monotone" dataKey="count" stroke="none" fill="url(#reservationFill)" /><Line type="monotone" dataKey="count" name="Reservations" stroke="#b18a45" strokeWidth={2.5} dot={{ r: 3, fill: '#b18a45', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#b18a45' }} /><Line type="monotone" dataKey="appointments" name="Appointments" stroke="#6688aa" strokeWidth={2.75} dot={{ r: 3, fill: '#6688aa', stroke: '#fffdf8', strokeWidth: 2 }} activeDot={{ r: 6, fill: '#6688aa', stroke: '#fffdf8', strokeWidth: 2 }} /></LineChart></ResponsiveContainer></div>
       </article>
       <article className="rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-5 shadow-[0_8px_22px_rgba(83,65,34,0.06)] xl:flex xl:min-h-0 xl:flex-col xl:p-5">
         <h2 className="font-display text-lg text-[#273746]">By Service Type</h2>

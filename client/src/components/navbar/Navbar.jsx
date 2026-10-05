@@ -1,6 +1,7 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { ChevronRight, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getDashboardByRole, normalizeRole } from '../../utils/roleRedirect';
 import { useNotifications } from '../../context/NotificationContext';
@@ -70,6 +71,7 @@ export default function Navbar({ dashboard = false, isSidebarOpen = false, onSid
   const [loginLoading, setLoginLoading] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profilePictureUnavailable, setProfilePictureUnavailable] = useState(false);
+  const [profileImagePreviewOpen, setProfileImagePreviewOpen] = useState(false);
   const profileRef = useRef(null);
   const initials = (user?.fullname || '')
     .split(' ')
@@ -82,6 +84,17 @@ export default function Navbar({ dashboard = false, isSidebarOpen = false, onSid
   useEffect(() => {
     setProfilePictureUnavailable(false);
   }, [profilePictureVersion, user?.id]);
+
+  useEffect(() => {
+    if (!profileImagePreviewOpen) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setProfileImagePreviewOpen(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [profileImagePreviewOpen]);
 
   const closeProfile = () => setProfileOpen(false);
 
@@ -114,8 +127,9 @@ export default function Navbar({ dashboard = false, isSidebarOpen = false, onSid
     const onDocMouseDown = (e) => {
       const clickedInsideProfile = profileRef.current && profileRef.current.contains(e.target);
       const clickedInsideAccount = e.target.closest('[data-account-menu="true"]');
+      const clickedInsideProfileImagePreview = e.target.closest('[data-profile-image-preview="true"]');
 
-      if (!clickedInsideProfile) setProfileOpen(false);
+      if (!clickedInsideProfile && !clickedInsideProfileImagePreview) setProfileOpen(false);
       const clickedInsideLoginModal = e.target.closest('[data-login-modal="true"]');
       if (!clickedInsideAccount && !clickedInsideLoginModal) setAccountOpen(false);
     };
@@ -267,7 +281,10 @@ export default function Navbar({ dashboard = false, isSidebarOpen = false, onSid
                   aria-label="Profile menu"
                   aria-haspopup="menu"
                   aria-expanded={profileOpen}
-                  onClick={() => setProfileOpen((v) => !v)}
+                  onClick={() => {
+                    setProfileImagePreviewOpen(false);
+                    setProfileOpen((v) => !v);
+                  }}
                   className={`relative w-10 h-10 rounded-full bg-[#d7b57a] text-[#0f2337] font-semibold text-xs transition-all duration-200 flex items-center justify-center border border-[#d7b57a]/80 shadow-[0_8px_18px_rgba(215,181,122,0.25)] ${
                     isAdmin
                       ? 'hover:brightness-95'
@@ -306,17 +323,13 @@ export default function Navbar({ dashboard = false, isSidebarOpen = false, onSid
                     >
                       {isAdmin ? (
                         <div className="flex items-center gap-3">
-                          <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#b18a45] text-base font-semibold text-white shadow-sm">
-                            {profilePictureUnavailable ? initials : (
-                              <img
-                                src={profilePictureUrl}
-                                alt=""
-                                crossOrigin="use-credentials"
-                                onError={() => setProfilePictureUnavailable(true)}
-                                className="h-full w-full object-cover"
-                              />
-                            )}
-                          </div>
+                          {profilePictureUnavailable ? (
+                            <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#b18a45] text-base font-semibold text-white shadow-sm">{initials}</div>
+                          ) : (
+                            <button type="button" aria-label="View profile picture" onClick={() => setProfileImagePreviewOpen(true)} className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#b18a45] text-base font-semibold text-white shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b18a45]">
+                              <img src={profilePictureUrl} alt="" crossOrigin="use-credentials" onError={() => setProfilePictureUnavailable(true)} className="h-full w-full object-cover" />
+                            </button>
+                          )}
                           <div className="min-w-0">
                             <p className="truncate font-display text-lg leading-tight text-[#1f3342]">{user.fullname}</p>
                             <p className="mt-1 truncate text-xs text-[#7a7d7f]">Parish Staff</p>
@@ -324,17 +337,13 @@ export default function Navbar({ dashboard = false, isSidebarOpen = false, onSid
                         </div>
                       ) : (
                         <div className="flex items-center gap-3">
-                          <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#b18a45] text-sm font-semibold text-white shadow-sm dark:border-gray-700">
-                            {profilePictureUnavailable ? initials : (
-                              <img
-                                src={profilePictureUrl}
-                                alt=""
-                                crossOrigin="use-credentials"
-                                onError={() => setProfilePictureUnavailable(true)}
-                                className="h-full w-full object-cover"
-                              />
-                            )}
-                          </span>
+                          {profilePictureUnavailable ? (
+                            <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#b18a45] text-sm font-semibold text-white shadow-sm dark:border-gray-700">{initials}</span>
+                          ) : (
+                            <button type="button" aria-label="View profile picture" onClick={() => setProfileImagePreviewOpen(true)} className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#b18a45] text-sm font-semibold text-white shadow-sm dark:border-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b18a45]">
+                              <img src={profilePictureUrl} alt="" crossOrigin="use-credentials" onError={() => setProfilePictureUnavailable(true)} className="h-full w-full object-cover" />
+                            </button>
+                          )}
                           <div className="min-w-0">
                             <p className="text-sm font-semibold leading-tight text-[#273746] dark:text-white truncate">
                               {user.fullname}
@@ -393,6 +402,17 @@ export default function Navbar({ dashboard = false, isSidebarOpen = false, onSid
                           {t('nav.logout')}
                         </button>
                       </div>
+                    )}
+                    {profileImagePreviewOpen && (
+                      createPortal(
+                        <div data-profile-image-preview="true" role="dialog" aria-modal="true" aria-label="Profile picture preview" onMouseDown={(event) => event.stopPropagation()} onClick={() => setProfileImagePreviewOpen(false)} className="fixed inset-0 z-[9999] flex cursor-zoom-out items-center justify-center bg-[#0f172a]/50 p-6 backdrop-blur-md">
+                          <button type="button" onClick={(event) => { event.stopPropagation(); setProfileImagePreviewOpen(false); }} className="absolute right-5 top-5 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-black/35 text-white shadow-lg backdrop-blur transition hover:bg-black/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label="Close profile picture preview">
+                            <X className="h-5 w-5" aria-hidden="true" />
+                          </button>
+                          <img src={profilePictureUrl} alt="Profile picture" crossOrigin="use-credentials" onClick={(event) => event.stopPropagation()} className="max-h-[min(80vh,640px)] max-w-[min(80vw,640px)] rounded-lg object-contain shadow-2xl" />
+                        </div>,
+                        document.body
+                      )
                     )}
                   </div>
                 )}

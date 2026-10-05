@@ -26,6 +26,11 @@ $chart = $db->query(
      FROM reservations GROUP BY month ORDER BY month DESC LIMIT 6"
 )->fetchAll();
 
+$appointmentChart = $db->query(
+    "SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, COUNT(*) AS count
+     FROM appointments GROUP BY month ORDER BY month DESC LIMIT 6"
+)->fetchAll();
+
 $services = $db->query(
     'SELECT service_type, COUNT(*) AS count FROM reservations GROUP BY service_type'
 )->fetchAll();
@@ -33,5 +38,6 @@ $services = $db->query(
 successResponse([
     'stats' => $stats,
     'monthly_chart' => array_reverse($chart),
+    'appointment_chart' => array_reverse($appointmentChart),
     'service_breakdown' => $services,
 ]);
