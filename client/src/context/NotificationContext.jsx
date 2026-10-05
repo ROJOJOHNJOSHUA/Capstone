@@ -22,7 +22,7 @@ export function NotificationProvider({ children }) {
   const queryRef = useRef(null);
   const requestIdRef = useRef(0);
 
-  const refresh = useCallback(async (params) => {
+  const refresh = useCallback(async (params, { silent = false } = {}) => {
     if (!user) {
       requestIdRef.current += 1;
       queryRef.current = null;
@@ -31,11 +31,12 @@ export function NotificationProvider({ children }) {
       setReadCount(0);
       setTotalCount(0);
       setFilteredCount(0);
+      setLoading(false);
       return;
     }
     if (params) queryRef.current = params;
     const requestId = ++requestIdRef.current;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const res = await getNotifications(queryRef.current || undefined);
       if (requestId !== requestIdRef.current) return;
@@ -57,8 +58,19 @@ export function NotificationProvider({ children }) {
   useEffect(() => {
     refresh();
     if (!user) return undefined;
-    const id = setInterval(refresh, 60000);
-    return () => clearInterval(id);
+    const refreshWhenActive = () => {
+      if (document.visibilityState === 'visible') {
+        refresh(undefined, { silent: true });
+      }
+    };
+    const id = window.setInterval(refreshWhenActive, 10000);
+    document.addEventListener('visibilitychange', refreshWhenActive);
+    window.addEventListener('focus', refreshWhenActive);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', refreshWhenActive);
+      window.removeEventListener('focus', refreshWhenActive);
+    };
   }, [refresh, user]);
 
   const markRead = async (id) => {

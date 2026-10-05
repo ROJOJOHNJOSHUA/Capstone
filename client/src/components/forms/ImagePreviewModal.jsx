@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-export default function ImagePreviewModal({ isOpen, src, alt = 'Image preview', title = 'Image Preview', onClose }) {
+export default function ImagePreviewModal({ isOpen, src, alt = 'Image preview', title = 'Image Preview', type = 'image/*', onClose }) {
   useEffect(() => {
     if (!isOpen) return undefined;
 
@@ -37,14 +37,22 @@ export default function ImagePreviewModal({ isOpen, src, alt = 'Image preview', 
             type="button"
             onClick={onClose}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0f2337]"
-            aria-label="Close image preview"
-            title="Close image preview"
+            aria-label="Close preview"
+            title="Close preview"
           >
             ×
           </button>
         </div>
         <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto bg-slate-100 p-3 sm:p-6">
-          <img src={src} alt={alt} className="block h-auto max-h-[calc(100dvh-8rem)] max-w-full object-contain" />
+          {type === 'application/pdf' ? (
+            <iframe
+              src={src}
+              title={`PDF preview: ${alt}`}
+              className="h-[calc(100dvh-8rem)] min-h-[24rem] w-full rounded-lg border border-slate-200 bg-white"
+            />
+          ) : (
+            <img src={src} alt={alt} className="block h-auto max-h-[calc(100dvh-8rem)] max-w-full object-contain" />
+          )}
         </div>
       </div>
     </div>

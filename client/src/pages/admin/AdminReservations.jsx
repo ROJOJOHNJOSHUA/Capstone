@@ -475,15 +475,6 @@ export default function AdminReservations() {
   const funeralRequirementsWaived = modal && modal.service_type === 'Funeral' && Boolean(parseServiceDetails(modal.service_details).requirements_to_be_followed);
   const canApproveReservation = !modal || !documentSummary || documentSummary.complete || funeralRequirementsWaived;
 
-  const stats = {
-    total: items.length,
-    pending: items.filter((item) => ['Pending', 'Under Review'].includes(item.status)).length,
-    approved: items.filter((item) => ['Approved', 'Paid'].includes(item.status)).length,
-    rejected: items.filter((item) => item.status === 'Rejected').length,
-    completed: items.filter((item) => item.status === 'Completed').length,
-    cancelled: items.filter((item) => item.status === 'Cancelled').length,
-  };
-
   const canConfirmPayment = modal && modal.service_type !== 'Mass Intention' && ['Approved', 'Paid'].includes(modal.status);
 
   return (
@@ -492,47 +483,46 @@ export default function AdminReservations() {
         <div className="flex min-h-[120px] flex-col rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-5 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
           <p className="min-h-8 text-[10px] font-semibold uppercase leading-4 tracking-[0.16em] text-[#7a7d7f]">Total Reservations</p>
           <div className="mt-auto flex min-h-10 items-center justify-between gap-2">
-            <span className="font-display text-3xl leading-none text-[#1f3342]">{stats.total}</span>
+            <span className="font-display text-3xl leading-none text-[#1f3342]">{items.length}</span>
             <span className="shrink-0 whitespace-nowrap rounded-full bg-[#f5ead5] px-2.5 py-1 text-[10px] font-medium leading-none text-[#a6813f]">All time</span>
           </div>
         </div>
         <div className="flex min-h-[120px] flex-col rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-5 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
           <p className="min-h-8 text-[10px] font-semibold uppercase leading-4 tracking-[0.16em] text-[#7a7d7f]">Under Review</p>
           <div className="mt-auto flex min-h-10 items-center justify-between gap-2">
-            <span className="font-display text-3xl leading-none text-[#1f3342]">{stats.pending}</span>
+            <span className="font-display text-3xl leading-none text-[#1f3342]">{items.filter((item) => ['Pending', 'Under Review'].includes(item.status)).length}</span>
             <span className="shrink-0 whitespace-nowrap rounded-full bg-[#f5ead0] px-2.5 py-1 text-[10px] font-medium leading-none text-[#775b25]">Review</span>
           </div>
         </div>
         <div className="flex min-h-[120px] flex-col rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-5 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
           <p className="min-h-8 text-[10px] font-semibold uppercase leading-4 tracking-[0.16em] text-[#7a7d7f]">Approved</p>
           <div className="mt-auto flex min-h-10 items-center justify-between gap-2">
-            <span className="font-display text-3xl leading-none text-[#1f3342]">{stats.approved}</span>
+            <span className="font-display text-3xl leading-none text-[#1f3342]">{items.filter((item) => ['Approved', 'Paid'].includes(item.status)).length}</span>
             <span className="shrink-0 whitespace-nowrap rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-medium leading-none text-emerald-700">Active</span>
           </div>
         </div>
         <div className="flex min-h-[120px] flex-col rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-5 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
           <p className="min-h-8 text-[10px] font-semibold uppercase leading-4 tracking-[0.16em] text-[#7a7d7f]">Rejected</p>
           <div className="mt-auto flex min-h-10 items-center justify-between gap-2">
-            <span className="font-display text-3xl leading-none text-[#1f3342]">{stats.rejected}</span>
+            <span className="font-display text-3xl leading-none text-[#1f3342]">{items.filter((item) => item.status === 'Rejected').length}</span>
             <span className="shrink-0 whitespace-nowrap rounded-full bg-red-100 px-2.5 py-1 text-[10px] font-medium leading-none text-red-700">Needs</span>
           </div>
         </div>
         <div className="flex min-h-[120px] flex-col rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-5 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
           <p className="min-h-8 text-[10px] font-semibold uppercase leading-4 tracking-[0.16em] text-[#7a7d7f]">Completed</p>
           <div className="mt-auto flex min-h-10 items-center justify-between gap-2">
-            <span className="font-display text-3xl leading-none text-[#1f3342]">{stats.completed}</span>
+            <span className="font-display text-3xl leading-none text-[#1f3342]">{items.filter((item) => item.status === 'Completed').length}</span>
             <span className="shrink-0 whitespace-nowrap rounded-full bg-blue-100 px-2.5 py-1 text-[10px] font-medium leading-none text-blue-700">Done</span>
           </div>
         </div>
         <div className="flex min-h-[120px] flex-col rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-5 shadow-[0_8px_22px_rgba(83,65,34,0.06)]">
           <p className="min-h-8 text-[10px] font-semibold uppercase leading-4 tracking-[0.16em] text-[#7a7d7f]">Cancelled</p>
           <div className="mt-auto flex min-h-10 items-center justify-between gap-2">
-            <span className="font-display text-3xl leading-none text-[#1f3342]">{stats.cancelled}</span>
+            <span className="font-display text-3xl leading-none text-[#1f3342]">{items.filter((item) => item.status === 'Cancelled').length}</span>
             <span className="shrink-0 whitespace-nowrap rounded-full bg-[#efede8] px-2.5 py-1 text-[10px] font-medium leading-none text-[#69665d]">Closed</span>
           </div>
         </div>
       </div>
-
       <div className="mb-5 grid gap-4 rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-4 shadow-sm sm:grid-cols-[minmax(12rem,0.8fr)_minmax(16rem,1.2fr)] sm:items-end">
         <div>
           <label htmlFor="reservation-status-filter" className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">Filter status</label>

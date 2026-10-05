@@ -1,125 +1,115 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { CalendarCheck2, ClipboardCheck } from 'lucide-react';
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import DashboardLayout from '../components/layout/DashboardLayout';
-import StatusBadge from '../components/cards/StatusBadge';
 import LoadingSpinner from '../components/forms/LoadingSpinner';
-import { useAuth } from '../context/AuthContext';
 import { getReservations, getAppointments } from '../services/api';
-import { SERVICE_LABELS } from '../utils/constants';
 
-function IconDoc({ className = 'h-5 w-5' }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M6 2.75h8L19.25 8v13.25H6z" />
-      <path d="M13.75 3v5.25H19" />
-      <path d="M9 12.5h6.5M9 16h6.5" />
-    </svg>
-  );
+const isApprovedReservation = (status) => ['Approved', 'Paid'].includes(status);
+const isApprovedAppointment = (status) => status === 'Approved';
+
+function getMonthlyRequests(reservations, appointments) {
+  const months = Array.from({ length: 6 }, (_, index) => {
+    const date = new Date();
+    date.setDate(1);
+    date.setMonth(date.getMonth() - 5 + index);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+    return {
+      key,
+      reservations: 0,
+      appointments: 0,
+    };
+  });
+  const monthByKey = new Map(months.map((month) => [month.key, month]));
+
+  reservations.forEach((reservation) => {
+    const month = monthByKey.get(String(reservation.created_at || '').slice(0, 7));
+    if (month) month.reservations += 1;
+  });
+  appointments.forEach((appointment) => {
+    const month = monthByKey.get(String(appointment.created_at || '').slice(0, 7));
+    if (month) month.appointments += 1;
+  });
+
+  return months;
 }
 
-function IconHourglass({ className = 'h-5 w-5' }) {
+function ApprovalStat({ icon: Icon, label, value }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M6.5 3h11M6.5 21h11M8 3c0 4.5 8 4.5 8 9s-8 4.5-8 9M16 3c0 4.5-8 4.5-8 9s8 4.5 8 9" />
-    </svg>
-  );
-}
-
-function IconCheckBadge({ className = 'h-5 w-5' }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M8.5 12.25l2.5 2.5 4.75-5" />
-    </svg>
-  );
-}
-
-function IconCal({ className = 'h-5 w-5' }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="3.5" y="5" width="17" height="16" rx="2" />
-      <path d="M8 3v4M16 3v4M3.5 10.5h17" />
-    </svg>
-  );
-}
-
-function StatCard({ icon, label, value, note, noteClass = 'text-[#4e7a5a]' }) {
-  return (
-    <div className="rounded-[22px] border border-[#ece4d3] bg-[#fffdf8] p-5 shadow-[0_14px_30px_rgba(83,65,34,0.06)]">
-      <div className="flex items-start justify-between">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f5ead5] text-[#a6813f]">{icon}</span>
+    <article className="relative overflow-hidden rounded-2xl border border-[#e9e0d1] bg-[#fffdf8] p-4 shadow-[0_8px_24px_rgba(83,65,34,0.05)] transition-shadow hover:shadow-[0_12px_30px_rgba(83,65,34,0.09)] sm:p-5">
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#b18a45] to-[#e5d0a8]" aria-hidden="true" />
+      <div className="flex items-center justify-between">
+        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#f7efdf] text-[#a6813f]">
+          <Icon className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e9e0d1] bg-[#fcfaf5] px-2.5 py-1 text-[10px] font-medium tracking-wide text-[#7d715c]">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#5d9870]" aria-hidden="true" />
+          LIVE
+        </span>
       </div>
-      <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8a7c5f]">{label}</p>
-      <p className="mt-1 font-display text-4xl text-[#2f2a22]">{value}</p>
-      <div className={`mt-2 text-xs font-medium ${noteClass}`}>{note}</div>
-    </div>
+      <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#83745a]">{label}</p>
+      <div className="mt-1 flex items-end justify-between gap-3">
+        <p className="font-display text-3xl leading-tight tabular-nums text-[#2f2a22]">{value}</p>
+        <p className="pb-1 text-[11px] text-[#8c877d]">Approved</p>
+      </div>
+    </article>
   );
-}
-
-const withinWeek = (item) => {
-  const raw = item?.created_at || item?.updated_at;
-  if (!raw) return false;
-  const created = new Date(String(raw).replace(' ', 'T'));
-  if (Number.isNaN(created.getTime())) return false;
-  return Date.now() - created.getTime() <= 7 * 24 * 60 * 60 * 1000;
-};
-
-const isApproved = (status) => ['Approved', 'Paid'].includes(status);
-const isPending = (status) => ['Pending', 'Submitted', 'In Review', 'Under Review'].includes(status);
-
-function manilaTodayIso() {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila' }).format(new Date());
 }
 
 export default function Dashboard() {
-  const { user } = useAuth();
   const [reservations, setReservations] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getReservations(), getAppointments()])
-      .then(([r, a]) => {
-        setReservations(r.data.reservations || []);
-        setAppointments(a.data.appointments || []);
-      })
-      .finally(() => setLoading(false));
+    let active = true;
+    let requestInFlight = false;
+
+    const refresh = async () => {
+      if (requestInFlight) return;
+      requestInFlight = true;
+      try {
+        const [reservationResponse, appointmentResponse] = await Promise.all([
+          getReservations(),
+          getAppointments(),
+        ]);
+        if (active) {
+          setReservations(reservationResponse.data.reservations || []);
+          setAppointments(appointmentResponse.data.appointments || []);
+        }
+      } catch (error) {
+        console.error('Failed to refresh dashboard requests:', error);
+      } finally {
+        requestInFlight = false;
+        if (active) setLoading(false);
+      }
+    };
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+
+    refresh();
+    const interval = window.setInterval(refreshWhenVisible, 10000);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    window.addEventListener('focus', refreshWhenVisible);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      window.removeEventListener('focus', refreshWhenVisible);
+    };
   }, []);
-
-  const totalRequests = reservations.length + appointments.length;
-  const pendingRequests = reservations.filter((r) => isPending(r.status)).length
-    + appointments.filter((a) => isPending(a.status)).length;
-  const approvedRequests = reservations.filter((r) => isApproved(r.status)).length
-    + appointments.filter((a) => isApproved(a.status)).length;
-
-  const todayIso = manilaTodayIso();
-  const upcomingAppointments = appointments.filter(
-    (a) => a.appointment_date >= todayIso && !['Cancelled', 'Rejected', 'Completed'].includes(a.status)
-  ).length;
-
-  const newThisWeek = reservations.filter(withinWeek).length + appointments.filter(withinWeek).length;
-  const approvedThisWeek =
-    reservations.filter((r) => isApproved(r.status) && withinWeek(r)).length
-    + appointments.filter((a) => isApproved(a.status) && withinWeek(a)).length;
-
-  const recentRequests = [
-    ...reservations.map((r) => ({
-      id: `res-${r.id}`,
-      date: r.reservation_date,
-      time: r.reservation_time || '',
-      service: SERVICE_LABELS[r.service_type] || r.service_type,
-      status: r.status,
-    })),
-    ...appointments.map((a) => ({
-      id: `apt-${a.id}`,
-      date: a.appointment_date,
-      time: a.appointment_time || '',
-      service: a.purpose,
-      status: a.status,
-    })),
-  ]
-    .sort((x, y) => `${y.date} ${y.time}`.localeCompare(`${x.date} ${x.time}`))
-    .slice(0, 5);
 
   if (loading) {
     return (
@@ -129,100 +119,100 @@ export default function Dashboard() {
     );
   }
 
+  const approvedReservations = reservations.filter((reservation) => isApprovedReservation(reservation.status)).length;
+  const approvedAppointments = appointments.filter((appointment) => isApprovedAppointment(appointment.status)).length;
+  const monthlyRequests = getMonthlyRequests(reservations, appointments);
+
   return (
     <DashboardLayout>
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          icon={<IconDoc />}
-          label="Total Requests"
-          value={totalRequests}
-          note={newThisWeek > 0 ? `+${newThisWeek} this week` : 'All time'}
-        />
-        <StatCard
-          icon={<IconHourglass />}
-          label="Pending Requests"
-          value={pendingRequests}
-          note={pendingRequests === 0 ? 'All caught up' : 'Awaiting review'}
-        />
-        <StatCard
-          icon={<IconCheckBadge />}
-          label="Approved"
-          value={approvedRequests}
-          note={approvedThisWeek > 0 ? `+${approvedThisWeek} this week` : 'No updates yet'}
-        />
-        <StatCard
-          icon={<IconCal />}
-          label="Upcoming Appointments"
-          value={upcomingAppointments}
-          note={
-            <Link to="/appointments" className="inline-flex items-center gap-1 transition hover:text-[#8d6928]">
-              View details <span aria-hidden="true">→</span>
-            </Link>
-          }
-          noteClass="text-[#a6813f]"
-        />
-      </div>
+      <div className="mx-auto w-full max-w-[1440px] space-y-4">
+        <section aria-label="Live approval counts" className="grid gap-4 sm:grid-cols-2">
+          <ApprovalStat
+            icon={ClipboardCheck}
+            label="Approved Reservations"
+            value={approvedReservations}
+          />
+          <ApprovalStat
+            icon={CalendarCheck2}
+            label="Approved Appointments"
+            value={approvedAppointments}
+          />
+        </section>
 
-      <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-        <div className="overflow-hidden rounded-[24px] border border-[#ece4d3] bg-[#fffdf8] shadow-[0_14px_30px_rgba(83,65,34,0.06)]">
-          <div className="flex items-center justify-between px-5 pt-5">
-            <h2 className="font-display text-lg font-semibold text-[#2f2a22]">Recent Requests</h2>
-            <Link to="/reservations" className="text-xs font-semibold text-[#a6813f] transition hover:text-[#8d6928]">
-              View All →
-            </Link>
+        <section className="overflow-hidden rounded-2xl border border-[#e9e0d1] bg-[#fffdf8] shadow-[0_8px_24px_rgba(83,65,34,0.05)]">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#f0eadd] px-5 py-3 sm:px-6">
+            <div>
+              <h2 className="font-display text-lg font-semibold text-[#2f2a22]">Monthly Requests</h2>
+              <p className="mt-1 text-[11px] text-[#8c877d]">Activity over the past six months</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-[#716957]">
+                <span className="h-2 w-2 rounded-full bg-[#b18a45]" aria-hidden="true" />
+                Reservations
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-[#716957]">
+                <span className="h-2 w-2 rounded-full bg-[#6688aa]" aria-hidden="true" />
+                Appointments
+              </span>
+              <span className="rounded-lg border border-[#e9e0d1] bg-[#fcfaf5] px-2.5 py-1 text-[10px] font-medium text-[#7a7162]">
+                Last 6 months
+              </span>
+            </div>
           </div>
-          <div className="mt-4 overflow-x-auto px-2 pb-3">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="text-left text-[10px] uppercase tracking-[0.16em] text-[#9a8666]">
-                  <th className="px-3 pb-3 font-semibold">Date</th>
-                  <th className="px-3 pb-3 font-semibold">Service</th>
-                  <th className="px-3 pb-3 font-semibold">Purpose</th>
-                  <th className="px-3 pb-3 font-semibold">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentRequests.map((request) => (
-                  <tr key={request.id} className="border-t border-[#f1e9da] transition hover:bg-[#faf5ea]">
-                    <td className="px-3 py-3.5 text-[#5b5344]">{request.date}</td>
-                    <td className="px-3 py-3.5 font-medium text-[#2f2a22]">{request.service}</td>
-                    <td className="px-3 py-3.5 text-[#9a8f78]">—</td>
-                    <td className="px-3 py-3.5">
-                      <StatusBadge status={request.status} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {recentRequests.length === 0 && (
-              <p className="px-3 py-8 text-center text-sm text-[#9a8f78]">
-                No requests yet.{' '}
-                <Link to="/make-request" className="font-semibold text-[#a6813f]">
-                  Make your first request
-                </Link>
-              </p>
-            )}
+          <div className="px-3 pb-3 pt-2 sm:px-5 sm:pb-4">
+            <ResponsiveContainer width="100%" height={230}>
+              <LineChart data={monthlyRequests} margin={{ top: 8, right: 12, left: -8, bottom: 0 }}>
+                <CartesianGrid stroke="#eee7db" vertical={false} />
+                <XAxis
+                  dataKey="key"
+                  tick={{ fontSize: 11, fill: '#8a857a' }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickMargin={10}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tickCount={5}
+                  tick={{ fontSize: 11, fill: '#8a857a' }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickMargin={10}
+                  width={32}
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: 10,
+                    border: '1px solid #e7dfd2',
+                    boxShadow: '0 8px 24px rgba(83,65,34,0.10)',
+                    fontSize: 12,
+                  }}
+                  labelStyle={{ color: '#5b5344', fontWeight: 600 }}
+                  cursor={{ stroke: '#d9cdb8', strokeDasharray: '4 4' }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="reservations"
+                  name="Reservations"
+                  stroke="#b18a45"
+                  strokeWidth={2.75}
+                  dot={{ r: 3, fill: '#b18a45', stroke: '#fffdf8', strokeWidth: 2 }}
+                  activeDot={{ r: 6, fill: '#b18a45', stroke: '#fffdf8', strokeWidth: 2 }}
+                  isAnimationActive={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="appointments"
+                  name="Appointments"
+                  stroke="#6688aa"
+                  strokeWidth={2.75}
+                  dot={{ r: 3, fill: '#6688aa', stroke: '#fffdf8', strokeWidth: 2 }}
+                  activeDot={{ r: 6, fill: '#6688aa', stroke: '#fffdf8', strokeWidth: 2 }}
+                  isAnimationActive={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
-        </div>
-
-        <div className="overflow-hidden rounded-[24px] border border-[#ece4d3] bg-[#fffdf8] shadow-[0_14px_30px_rgba(83,65,34,0.06)]">
-          <div className="relative h-44">
-            <img src="/jesus.jpg" alt="Inside the parish church" className="absolute inset-0 h-full w-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent" aria-hidden="true" />
-          </div>
-          <div className="p-5">
-            <p className="font-display text-lg italic leading-snug text-[#4a4033]">
-              Let us keep your faith journey close to our hearts.
-            </p>
-            <Link
-              to="/make-request"
-              className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#b18a45] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_10px_22px_rgba(177,138,69,0.28)] transition hover:-translate-y-0.5 hover:bg-[#967338]"
-            >
-              Make a Request
-              <span aria-hidden="true">→</span>
-            </Link>
-          </div>
-        </div>
+        </section>
       </div>
     </DashboardLayout>
   );

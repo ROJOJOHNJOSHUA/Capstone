@@ -359,9 +359,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
-    if (!$isAdmin) {
-        errorResponse('Admin access required.', 403);
-    }
     $data = getJsonInput();
     $id = (int) ($data['id'] ?? 0);
     $status = $data['status'] ?? '';
@@ -374,7 +371,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
         errorResponse('A rejection reason is required.', 422, ['remarks' => 'Please provide a rejection reason.']);
     }
 
-    $stmt = $db->prepare('SELECT id, service_type, status, reservation_date, reservation_time, intention_name, service_details FROM reservations WHERE id = ?');
+    $stmt = $db->prepare('SELECT id, user_id, service_type, status, reservation_date, reservation_time, intention_name, service_details, remarks FROM reservations WHERE id = ?');
     $stmt->execute([$id]);
     $reservation = $stmt->fetch(PDO::FETCH_ASSOC);
     
@@ -383,7 +380,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     }
 
     $previousStatus = (string) $reservation['status'];
+    if (!$isAdmin) {
+        if ((int) $reservation['user_id'] !== (int) $auth['user_id']) {
+            errorResponse('You do not have permission to update this reservation.', 403);
+        }
+        if ($status !== 'Cancelled') {
+            errorResponse('Parishioners can only cancel reservations.', 403);
+        }
+        if (!in_array($previousStatus, ['Pending', 'Under Review'], true)) {
+            errorResponse('Only reservations under review can be cancelled by parishioners.', 422);
+        }
+    }
+
     $statusChanged = $status !== $previousStatus;
+    $remarksValue = $isAdmin ? ($remarks ?: null) : $reservation['remarks'];
 
     // Prevent approval if required documents are not verified, unless the
     // parishioner explicitly checked the funeral "requirements to be followed"
@@ -404,10 +414,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
         }
     }
 
-    $upd = $db->prepare('UPDATE reservations SET status = ?, remarks = ? WHERE id = ? AND status = ?');
-    $upd->execute([$status, $remarks ?: null, $id, $previousStatus]);
+    $ownerGuard = $isAdmin
+        ? ' AND status = ?'
+        : " AND user_id = ? AND status IN ('Pending', 'Under Review')";
+    $upd = $db->prepare("UPDATE reservations SET status = ?, remarks = ? WHERE id = ?{$ownerGuard}");
+    $updateParams = [$status, $remarksValue, $id];
+    if ($isAdmin) {
+        $updateParams[] = $previousStatus;
+    } else {
+        $updateParams[] = (int) $auth['user_id'];
+    }
+    $upd->execute($updateParams);
     if ($statusChanged && $upd->rowCount() !== 1) {
-        errorResponse('This reservation was updated by another admin. Refresh the list and try again.', 409);
+        errorResponse('This reservation changed before your update could be saved. Refresh the list and try again.', 409);
     }
 
     if ($status === 'Completed' && $statusChanged) {
@@ -417,6 +436,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     // A decision notification is created only after a real status transition.
     if ($statusChanged) {
         notifyReservationStatusChange($db, $id, $status);
+        if (!$isAdmin && $status === 'Cancelled') {
+            notifyAdminsOfReservationCancellation($db, $id);
+        }
     }
 
     // Send SMS only when status actually changes
@@ -432,7 +454,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
 
             if ($status === 'Cancelled') {
                 $smsMessages = [
-                    'Cancelled' => "Holy Family Parish: payme. Payment didn't settle. Your {$serviceLabel} reservation for {$resDate} at {$resTime} has been cancelled by a parish admin. Reservation ID: {$id}. Thank you.",
+                    'Cancelled' => "Holy Family Parish: Your {$serviceLabel} reservation for {$resDate} at {$resTime} has been cancelled. Reservation ID: {$id}.",
                 ];
             } elseif ($serviceLabel === 'Mass Intention') {
                 // Mass Intention uses its own dedicated wording, not the generic reservation message.
@@ -521,8 +543,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
         logSystemAction($db, (int) $auth['user_id'], "$status Reservation", 'Reservation', "$status {$reservation['service_type']} reservation #{$id}.", 'Reservation', $id);
     }
 
-    successResponse(null, "Reservation $status.");
+    successResponse(
+        ['id' => $id, 'status' => $status, 'remarks' => $remarksValue],
+        "Reservation $status."
+    );
 }
 
 errorResponse('Method not allowed.', 405);
-

@@ -13,7 +13,7 @@ export default function DocumentUpload({
   onDocumentReplace = null,
 }) {
   const [files, setFiles] = useState({});
-  const [dragActive, setDragActive] = useState(false);
+  const [activeDropType, setActiveDropType] = useState(null);
   const [uploading, setUploading] = useState({});
   const [errors, setErrors] = useState({});
   const [previews, setPreviews] = useState({});
@@ -24,31 +24,27 @@ export default function DocumentUpload({
     setFiles(initialFiles || {});
   }, [initialFiles]);
 
-  const handleDrag = (e) => {
+  const handleDocumentDrop = (docType, e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
-  };
+    setActiveDropType(null);
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFiles(e.dataTransfer.files);
+    const droppedFiles = e.dataTransfer.files;
+    if (!droppedFiles?.length) return;
+    if (droppedFiles.length > 1) {
+      setErrors((current) => ({
+        ...current,
+        [docType]: 'Drop one file at a time for this document.',
+      }));
+      return;
     }
-  };
 
-  const handleChange = (e) => {
-    e.preventDefault();
-    if (e.target.files && e.target.files.length > 0) {
-      handleFiles(e.target.files);
-    }
+    setErrors((current) => {
+      const next = { ...current };
+      delete next[docType];
+      return next;
+    });
+    handleFiles(droppedFiles, docType);
   };
 
   const handleFileChange = (docType, e) => {
@@ -94,12 +90,25 @@ export default function DocumentUpload({
 
       newFiles[docType] = file;
       delete newErrors[file.name];
+      if (selectedDocType) delete newErrors[selectedDocType];
 
-      // Generate preview for images
-      if (file.type.startsWith('image/')) {
+      if (file.type.startsWith('image/') || file.type === 'application/pdf') {
         const reader = new FileReader();
-        reader.onload = (e) => {
-          setPreviews((prev) => ({ ...prev, [docType]: e.target.result }));
+        reader.onload = () => {
+          if (typeof reader.result !== 'string') {
+            setErrors((current) => ({
+              ...current,
+              [docType]: `Could not create a preview for ${file.name}.`,
+            }));
+            return;
+          }
+          setPreviews((current) => ({ ...current, [docType]: reader.result }));
+        };
+        reader.onerror = () => {
+          setErrors((current) => ({
+            ...current,
+            [docType]: `Could not read ${file.name} to create a preview.`,
+          }));
         };
         reader.readAsDataURL(file);
       } else {
@@ -154,63 +163,49 @@ export default function DocumentUpload({
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'Verified': return 'bg-green-100 text-green-800 border-green-300';
-      case 'Rejected': return 'bg-red-100 text-red-800 border-red-300';
-      case 'Pending': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-      default: return 'bg-gray-100 text-gray-800 border-gray-300';
+      case 'Verified': return 'bg-emerald-50 text-emerald-700';
+      case 'Rejected': return 'bg-rose-50 text-rose-700';
+      case 'Pending': return 'bg-amber-50 text-amber-800';
+      default: return 'bg-[#f5f4f1] text-[#68645d]';
     }
   };
 
   return (
-    <div className="space-y-3 sm:space-y-4">
-      {requirements.length > 0 ? (
-        <>
-          <div
-            className={`rounded-xl border-2 border-dashed p-3 text-center transition-colors sm:p-6 ${
-              dragActive ? 'border-parish-blue bg-parish-blue-light' : 'border-gray-300 hover:border-gray-400'
-            }`}
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-          >
-            <div className="space-y-2">
-              <div className="text-3xl sm:text-4xl">📤</div>
-              <p className="text-sm font-medium text-gray-700">
-                Drag and drop files here
-              </p>
-              <p className="text-[10px] text-gray-500 sm:text-xs">
-                Accepted: JPG, PNG, PDF (max 5MB each)
-              </p>
-            </div>
-          </div>
-
+    <section className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:rounded-[24px] sm:p-5">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 sm:tracking-[0.18em]">Documents</h3>
+        <span className="rounded-full bg-[#f5ead0] px-2.5 py-1 text-[10px] font-medium text-[#775b25]">Required</span>
+      </div>
+      <div className="space-y-3 sm:space-y-4">
+        {requirements.length > 0 ? (
+          <>
           {Object.keys(errors).length > 0 && (
             <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded text-sm">
               <p className="font-medium mb-1">Upload errors:</p>
               <ul className="list-disc list-inside space-y-1">
                 {Object.entries(errors).map(([name, error]) => (
-                  <li key={name}>{name}: {error}</li>
+                <li key={name} className="break-words">{requirements.find((req) => req.type === name)?.name || name}: {error}</li>
                 ))}
               </ul>
             </div>
           )}
 
-          <div className="space-y-2 sm:space-y-3">
+          <div className="space-y-3 sm:space-y-4">
             {requirements.map((req) => {
               const file = files[req.type];
               const existing = existingDocuments.find(d => d.document_type === req.type);
               const status = getDocumentStatus(req.type);
               const isUploading = uploading[req.type];
+              const statusLabel = file ? 'Ready to upload' : status === 'missing' ? 'Not uploaded' : status;
 
               return (
                 <div
                   key={req.type}
-                  className={`rounded-xl border p-2.5 sm:p-3 ${
-                    status === 'Verified' ? 'border-green-300 bg-green-50' :
-                    status === 'Rejected' ? 'border-red-300 bg-red-50' :
-                    file ? 'border-blue-300 bg-blue-50' :
-                    'border-gray-200 bg-gray-50'
+                  className={`min-w-0 rounded-xl border p-3 shadow-sm sm:rounded-2xl sm:p-5 ${
+                    status === 'Verified' && !file ? 'border-emerald-200 bg-emerald-50/60' :
+                    status === 'Rejected' && !file ? 'border-rose-200 bg-rose-50/60' :
+                    file ? 'border-[#d8c69e] bg-[#fffcf5]' :
+                    'border-[#e8e2d7] bg-white'
                   }`}
                 >
                   <input
@@ -222,47 +217,97 @@ export default function DocumentUpload({
                     className="sr-only"
                     accept=".jpg,.jpeg,.png,.pdf"
                   />
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex min-w-0 flex-1 items-start gap-3">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-2xl shadow-sm sm:h-12 sm:w-12">
-                        {file ? getFileIcon(file.type) : getFileIcon('application/pdf')}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-800">{req.name}</p>
-                        <p className="text-[10px] text-gray-500 sm:text-xs">
+                  <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-4">
+                    <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-3.5">
+                      <button
+                        type="button"
+                        onClick={() => onButtonClick(req.type)}
+                        onDragEnter={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setActiveDropType(req.type);
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          e.dataTransfer.dropEffect = 'copy';
+                          setActiveDropType(req.type);
+                        }}
+                        onDragLeave={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (!e.currentTarget.contains(e.relatedTarget)) setActiveDropType(null);
+                        }}
+                        onDrop={(e) => handleDocumentDrop(req.type, e)}
+                        aria-label={`Choose or drop a file for ${req.name}`}
+                        title={`Click or drop a file for ${req.name}`}
+                        className={`relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-white p-1.5 shadow-sm transition sm:h-16 sm:w-16 sm:rounded-xl ${
+                          activeDropType === req.type
+                            ? 'border-[#b18a45] bg-[#faf3e3] ring-2 ring-[#b18a45]/30'
+                            : 'border-[#ece5d9] hover:border-[#c5ad7b] hover:bg-[#fdfbf7]'
+                        }`}
+                      >
+                        {activeDropType === req.type ? (
+                          <span className="text-center text-[10px] font-semibold leading-tight text-[#6d552b]">Drop<br />file</span>
+                        ) : file && previews[req.type] ? (
+                          <img
+                            src={previews[req.type]}
+                            alt={`Preview of ${file.name}`}
+                            className="h-full w-full rounded-lg object-contain"
+                          />
+                        ) : (
+                          <span className="text-2xl" aria-hidden="true">
+                            {file ? getFileIcon(file.type) : getFileIcon('application/pdf')}
+                          </span>
+                        )}
+                      </button>
+                      <div className="min-w-0 flex-1 pt-0.5 sm:pt-0">
+                        <p className="break-words text-sm font-semibold leading-5 text-[#302b24]">{req.name}</p>
+                        <p className="mt-0.5 text-xs text-[#817663]">
                           {req.required ? 'Required' : 'Optional'}
                         </p>
                         {file && (
-                          <p className="mt-1 truncate text-[10px] text-gray-600 sm:text-xs" title={file.name}>{file.name}</p>
+                          <p className="mt-1 break-all text-xs leading-4 text-[#635a4e]">{file.name}</p>
                         )}
                         {existing && !file && (
-                          <p className="mt-1 text-[10px] text-gray-600 sm:text-xs">
-                            Uploaded: {new Date(existing.uploaded_at).toLocaleDateString()}
+                          <p className="mt-1 text-xs text-[#817663]">
+                            Uploaded {new Date(existing.uploaded_at).toLocaleDateString()}
                           </p>
                         )}
                       </div>
                     </div>
-                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">
                       {isUploading ? (
-                        <span className="text-xs text-blue-600">Uploading...</span>
+                        <span className="w-full text-sm font-medium text-[#6d552b] sm:w-auto">Uploading...</span>
                       ) : (
                         <>
-                          <button
-                            type="button"
-                            onClick={() => onButtonClick(req.type)}
-                            className="btn-primary w-full min-h-10 px-3 py-2 text-[11px] sm:w-auto sm:text-xs"
+                          <div
+                            role="group"
+                            aria-label={`${req.name} file selection and upload status`}
+                            className="inline-flex min-w-0 flex-1 items-stretch overflow-hidden rounded-lg border border-[#e3d9c7] bg-white shadow-sm sm:flex-none"
                           >
-                            {file ? 'Change File' : 'Select File'}
-                          </button>
-                          <span className={`self-start rounded border px-2 py-1 text-[10px] sm:text-xs ${getStatusColor(status)}`}>
-                            {status === 'missing' ? 'Not uploaded' : status}
-                          </span>
+                            <button
+                              type="button"
+                              onClick={() => onButtonClick(req.type)}
+                              className="inline-flex min-h-10 shrink-0 items-center whitespace-nowrap bg-[#f5e8c9] px-2.5 py-2 text-[11px] font-semibold text-[#6d552b] transition hover:bg-[#eddbb3] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#b18a45] sm:px-3.5 sm:text-xs"
+                            >
+                              {file ? 'Change File' : 'Select File'}
+                            </button>
+                            <span className={`inline-flex min-h-10 min-w-0 flex-1 items-center justify-center break-words border-l border-[#e3d9c7] px-2 py-2 text-center text-[10px] font-medium leading-4 sm:flex-none sm:whitespace-nowrap sm:px-3 sm:text-[11px] ${
+                              file
+                                ? 'bg-[#f8f4e9] text-[#745d32]'
+                                : getStatusColor(status)
+                            }`}>
+                              {statusLabel}
+                            </span>
+                          </div>
                           {file && (
                             <button
                               type="button"
                               onClick={() => removeFile(req.type)}
-                              className="text-sm text-red-600 hover:text-red-800 sm:self-auto"
-                              aria-label="Remove file"
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-rose-200 bg-white text-rose-600 transition hover:bg-rose-50 hover:text-rose-700"
+                              aria-label={`Remove ${req.name}`}
+                              title="Remove file"
                             >
                               ✕
                             </button>
@@ -271,7 +316,7 @@ export default function DocumentUpload({
                             <button
                               type="button"
                               onClick={() => onDocumentReplace(req.type)}
-                              className="text-[11px] text-blue-600 underline sm:text-xs"
+                              className="min-h-10 rounded-lg px-2 py-2 text-xs font-semibold text-[#8b682d] underline underline-offset-2 hover:text-[#684b1e]"
                             >
                               Replace
                             </button>
@@ -279,8 +324,12 @@ export default function DocumentUpload({
                           {previews[req.type] && (
                             <button
                               type="button"
-                              onClick={() => setPreview({ src: previews[req.type], alt: file.name })}
-                              className="text-[11px] text-blue-600 underline sm:text-xs"
+                              onClick={() => setPreview({
+                                src: previews[req.type],
+                                alt: file.name,
+                                type: file.type,
+                              })}
+                              className="min-h-10 rounded-lg px-2 py-2 text-xs font-semibold text-[#8b682d] underline underline-offset-2 hover:text-[#684b1e]"
                             >
                               Preview
                             </button>
@@ -289,26 +338,8 @@ export default function DocumentUpload({
                       )}
                     </div>
                   </div>
-                  {file && (
-                    <div className="mt-3 flex items-center gap-3 rounded-lg border border-blue-100 bg-white p-2">
-                      {previews[req.type] ? (
-                        <img
-                          src={previews[req.type]}
-                          alt={`Preview of ${file.name}`}
-                          className="h-12 w-12 rounded object-cover sm:h-14 sm:w-14"
-                        />
-                      ) : (
-                        <span className="flex h-12 w-12 items-center justify-center rounded bg-gray-100 text-xl sm:h-14 sm:w-14 sm:text-2xl">
-                          {getFileIcon(file.type)}
-                        </span>
-                      )}
-                      <p className="min-w-0 flex-1 truncate text-[10px] text-gray-700 sm:text-xs" title={file.name}>
-                        ✓ {file.name}
-                      </p>
-                    </div>
-                  )}
                   {existing && existing.remarks && status === 'Rejected' && (
-                    <p className="mt-2 text-[10px] italic text-red-600 sm:text-xs">
+                    <p className="mt-3 rounded-lg border border-rose-200 bg-white/70 px-3 py-2 text-xs italic text-rose-700">
                       Remarks: "{existing.remarks}"
                     </p>
                   )}
@@ -316,16 +347,19 @@ export default function DocumentUpload({
               );
             })}
           </div>
-        </>
-      ) : (
-        <p className="text-sm text-gray-500">No document requirements for this service.</p>
-      )}
+          </>
+        ) : (
+          <p className="text-sm text-gray-500">No document requirements for this service.</p>
+        )}
+      </div>
       <ImagePreviewModal
         isOpen={!!preview}
         src={preview?.src}
         alt={preview?.alt}
+        type={preview?.type}
+        title={preview?.type === 'application/pdf' ? preview.alt : 'Image Preview'}
         onClose={() => setPreview(null)}
       />
-    </div>
+    </section>
   );
 }

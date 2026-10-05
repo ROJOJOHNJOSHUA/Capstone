@@ -12,6 +12,7 @@ import {
   SERVICE_SCHEDULE,
   SERVICE_REQUIREMENTS,
   SERVICE_TYPES,
+  PARISH_LOCATION,
 } from "../../utils/constants";
 
 const STEPS = [
@@ -369,26 +370,46 @@ export default function FuneralReservationForm({
   return (
     <form
       onSubmit={(event) => event.preventDefault()}
-      className="mb-6 overflow-hidden rounded-[30px] border border-[#e8dfd0] bg-white shadow-[0_22px_45px_rgba(15,31,45,0.08)]"
+      onClickCapture={() => {
+        if (error) setError("");
+      }}
+      className="reservation-request-form mb-6 overflow-hidden rounded-[30px] border border-[#e8dfd0] bg-white shadow-[0_22px_45px_rgba(15,31,45,0.08)]"
     >
-      <div className="border-b border-slate-200 bg-slate-50 px-5 py-5">
-        <h2 className="text-2xl font-semibold text-[#0f2337]">
-          Funeral Reservation
-        </h2>
-        <div className="mt-4 flex gap-2 overflow-x-auto">
+      <div className="border-b border-slate-200 bg-slate-50 px-5 py-5 sm:px-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#d7b57a]">New request</p>
+            <h2 className="mt-2 text-2xl font-semibold text-[#0f2337]">Reservation Request</h2>
+          </div>
+          <div className="rounded-full border border-[#e8dfd0] bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-600">
+            {PARISH_LOCATION.name}
+          </div>
+        </div>
+      </div>
+      <div className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
+        <div className="flex gap-2 overflow-x-auto pb-1">
           {STEPS.map((label, index) => (
             <button
               type="button"
               key={label}
+              disabled={index > step}
               onClick={() => index <= step && setStep(index)}
-              className={`min-w-[125px] rounded-xl border px-3 py-2 text-left text-xs font-semibold ${step === index ? "border-[#0f2337] bg-[#0f2337] text-white" : index < step ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-500"}`}
+              className={`min-w-[120px] rounded-xl border px-3 py-2 text-left transition ${
+                step === index
+                  ? "border-[#0f2337] bg-[#0f2337] text-white shadow-sm"
+                  : index < step
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border-slate-200 bg-slate-50 text-slate-600"
+              }`}
             >
-              {index + 1}. {label}
+              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] opacity-80">Step {index + 1}</div>
+              <div className="mt-1 text-sm font-semibold">{label}</div>
             </button>
           ))}
         </div>
       </div>
-      <div className="p-5 sm:p-6">
+      <div className="grid min-w-0 gap-4 p-3 sm:gap-5 sm:p-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+        <div className="min-w-0 space-y-5">
         {error && (
           <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
@@ -657,63 +678,90 @@ export default function FuneralReservationForm({
           </div>
         )}
         {step === 6 && (
-          <div className="space-y-4 text-sm text-slate-700">
-            <div className="rounded-2xl border border-slate-200 p-4">
+          <div className="min-w-0 w-full max-w-full space-y-3 text-sm text-slate-700 sm:space-y-4">
+            <div className="min-w-0 w-full max-w-full rounded-xl border border-slate-200 p-3 sm:rounded-2xl sm:p-4">
               <h3 className="font-semibold text-[#0f2337]">
                 Deceased Information
               </h3>
               {PERSONAL_FIELDS.map(([key, label]) => (
-                <p key={key} className="mt-1">
-                  <strong>{label}:</strong>{" "}
-                  {key.includes("date")
-                    ? displayDate(details[key])
-                    : details[key] || "Not provided"}
+                <p key={key} className="mt-2 grid min-w-0 grid-cols-1 gap-0.5 border-b border-slate-100 pb-2 last:border-0 last:pb-0 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)] sm:gap-2">
+                  <strong className="min-w-0 text-xs text-slate-600 sm:text-sm">{label}</strong>
+                  <span className="min-w-0 break-words leading-5">
+                    {key.includes("date")
+                      ? displayDate(details[key])
+                      : details[key] || "Not provided"}
+                  </span>
                 </p>
               ))}
             </div>
-            <div className="rounded-2xl border border-slate-200 p-4">
+            <div className="min-w-0 w-full max-w-full rounded-xl border border-slate-200 p-3 sm:rounded-2xl sm:p-4">
               <h3 className="font-semibold text-[#0f2337]">
                 Cemetery Information
               </h3>
-              <p className="mt-1">
-                <strong>Type:</strong> {details.cemetery_type}
+              <p className="mt-2 grid min-w-0 grid-cols-1 gap-0.5 border-b border-slate-100 pb-2 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)] sm:gap-2">
+                <strong className="text-xs text-slate-600 sm:text-sm">Type</strong>
+                <span className="break-words leading-5">{details.cemetery_type}</span>
               </p>
               {(CEMETERY_FIELDS[details.cemetery_type] || []).map(
                 ([key, label]) => (
-                  <p key={key} className="mt-1">
-                    <strong>{label}:</strong>{" "}
-                    {key.includes("date")
-                      ? displayDate(cemeteryDetails[key])
-                      : cemeteryDetails[key] || "Not provided"}
+                  <p key={key} className="mt-2 grid min-w-0 grid-cols-1 gap-0.5 border-b border-slate-100 pb-2 last:border-0 last:pb-0 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)] sm:gap-2">
+                    <strong className="min-w-0 text-xs text-slate-600 sm:text-sm">{label}</strong>
+                    <span className="min-w-0 break-words leading-5">
+                      {key.includes("date")
+                        ? displayDate(cemeteryDetails[key])
+                        : cemeteryDetails[key] || "Not provided"}
+                    </span>
                   </p>
                 ),
               )}
             </div>
-            <div className="rounded-2xl border border-slate-200 p-4">
+            <div className="min-w-0 w-full max-w-full rounded-xl border border-slate-200 p-3 sm:rounded-2xl sm:p-4">
               <h3 className="font-semibold text-[#0f2337]">Funeral Details</h3>
-              <p className="mt-1">
-                <strong>Service:</strong>{" "}
-                {details.funeral_service === "Other"
-                  ? details.funeral_service_other
-                  : details.funeral_service}
+              <p className="mt-2 grid min-w-0 grid-cols-1 gap-0.5 border-b border-slate-100 pb-2 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)] sm:gap-2">
+                <strong className="text-xs text-slate-600 sm:text-sm">Service</strong>
+                <span className="break-words leading-5">
+                  {details.funeral_service === "Other"
+                    ? details.funeral_service_other
+                    : details.funeral_service}
+                </span>
               </p>
-              <p className="mt-1">
-                <strong>Schedule:</strong> {displayDate(date)} at{" "}
-                {time ? timeLabel(time) : "Not selected"}
+              <p className="mt-2 grid min-w-0 grid-cols-1 gap-0.5 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)] sm:gap-2">
+                <strong className="text-xs text-slate-600 sm:text-sm">Schedule</strong>
+                <span className="break-words leading-5">{displayDate(date)} at {time ? timeLabel(time) : "Not selected"}</span>
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-200 p-4">
+            <div className="min-w-0 w-full max-w-full rounded-xl border border-slate-200 p-3 sm:rounded-2xl sm:p-4">
               <h3 className="font-semibold text-[#0f2337]">Documents</h3>
               {activeRequirements.map((item) => (
-                <p key={item.type} className="mt-1">
-                  <strong>{item.name}:</strong>{" "}
-                  {files[item.type]?.name || "Missing"}
+                <p key={item.type} className="mt-2 grid min-w-0 grid-cols-1 gap-0.5 border-b border-slate-100 pb-2 last:border-0 last:pb-0 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)] sm:gap-2">
+                  <strong className="min-w-0 text-xs text-slate-600 sm:text-sm">{item.name}</strong>
+                  <span className="min-w-0 break-all leading-5">{files[item.type]?.name || "Missing"}</span>
                 </p>
               ))}
             </div>
           </div>
         )}
-        <div className="mt-6 flex gap-3">
+        </div>
+        <div className="space-y-5">
+        {step < STEPS.length - 1 && (
+          <div className="rounded-[24px] border border-[#e8dfd0] bg-[#faf6ed] p-4 sm:p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#83745a]">
+                Progress
+              </h3>
+              <span className="rounded-full bg-[#f5ead5] px-2.5 py-1 text-[10px] font-medium text-[#8d6928]">
+                {step + 1}/{STEPS.length}
+              </span>
+            </div>
+            <ul className="space-y-2 text-sm text-[#514638]">
+              <li>• Enter the deceased and cemetery details.</li>
+              <li>• Add funeral service and schedule information.</li>
+              <li>• Upload the required documents.</li>
+              <li>• Review and submit your reservation request.</li>
+            </ul>
+          </div>
+        )}
+        <div className="flex flex-col gap-3 sm:flex-row">
           {step > 0 && (
             <button
               type="button"
@@ -737,6 +785,7 @@ export default function FuneralReservationForm({
               {submitting ? "Submitting..." : "Submit Funeral Reservation"}
             </button>
           )}
+        </div>
         </div>
       </div>
     </form>

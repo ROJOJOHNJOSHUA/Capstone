@@ -15,43 +15,6 @@ import {
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-function StatIconCal({ className = 'h-5 w-5' }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="3.5" y="5" width="17" height="16" rx="2" />
-      <path d="M8 3v4M16 3v4M3.5 10.5h17" />
-    </svg>
-  );
-}
-
-function StatIconHourglass({ className = 'h-5 w-5' }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M6.5 3h11M6.5 21h11M8 3c0 4.5 8 4.5 8 9s-8 4.5-8 9M16 3c0 4.5-8 4.5-8 9s8 4.5 8 9" />
-    </svg>
-  );
-}
-
-function StatIconCheck({ className = 'h-5 w-5' }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M8.5 12.25l2.5 2.5 4.75-5" />
-    </svg>
-  );
-}
-
-function RecordStatCard({ icon, label, value, accent = 'text-[#2f2a22]' }) {
-  return (
-    <div className="rounded-[22px] border border-[#ece4d3] bg-[#fffdf8] p-5 shadow-[0_14px_30px_rgba(83,65,34,0.06)]">
-      <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f5ead5] text-[#a6813f]">{icon}</span>
-        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8a7c5f]">{label}</span>
-      </div>
-      <p className={`mt-3 font-display text-4xl ${accent}`}>{value}</p>
-    </div>
-  );
-}
 const PURPOSE_OPTIONS = [
   'Getting a Certificate',
   'Requesting a Church Record',
@@ -454,18 +417,8 @@ export default function Appointment() {
     );
   }
 
-  const totalAppointments = appointments.length;
-  const pendingAppointments = appointments.filter((item) => ['Pending', 'Submitted', 'In Review'].includes(item.status)).length;
-  const approvedAppointments = appointments.filter((item) => ['Approved', 'Paid'].includes(item.status)).length;
-
   return (
     <DashboardLayout>
-      <div className="mb-6 grid gap-4 md:grid-cols-3">
-        <RecordStatCard icon={<StatIconCal />} label="Total" value={totalAppointments} />
-        <RecordStatCard icon={<StatIconHourglass />} label="Pending" value={pendingAppointments} accent="text-[#b68a3b]" />
-        <RecordStatCard icon={<StatIconCheck />} label="Approved" value={approvedAppointments} accent="text-[#1a6a4a]" />
-      </div>
-
       {msg && <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">{msg}</div>}
 
       {showForm && (

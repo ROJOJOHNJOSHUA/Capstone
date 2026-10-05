@@ -164,6 +164,7 @@ function notifyReservationStatusChange(PDO $db, int $reservationId, string $stat
         'Rejected' => "Your {$service} reservation has been rejected by the Holy Family Parish.",
         'Completed' => "Your {$service} reservation on {$date} has been marked completed.",
         'Pending' => "Your {$service} reservation is pending review.",
+        'Cancelled' => "Your {$service} reservation on {$date} has been cancelled.",
     ];
 
     if (!isset($messages[$status])) {
@@ -245,6 +246,36 @@ function notifyAdminsOfAppointmentCancellation(PDO $db, int $appointmentId): voi
         '/admin/appointments',
         'appointment',
         $appointmentId
+    );
+}
+
+function notifyAdminsOfReservationCancellation(PDO $db, int $reservationId): void
+{
+    $stmt = $db->prepare(
+        'SELECT u.fullname, r.service_type, r.reservation_date, r.reservation_time
+         FROM reservations r
+         INNER JOIN users u ON r.user_id = u.id
+         WHERE r.id = ?
+         LIMIT 1'
+    );
+    $stmt->execute([$reservationId]);
+    $reservation = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$reservation) {
+        return;
+    }
+
+    $date = (new DateTimeImmutable($reservation['reservation_date']))->format('F j, Y');
+    $time = DateTimeImmutable::createFromFormat('H:i:s', (string) $reservation['reservation_time']);
+    $timeLabel = $time ? $time->format('g:i A') : (string) $reservation['reservation_time'];
+
+    notifyAdmins(
+        $db,
+        'reservation_cancelled',
+        'Reservation Cancelled',
+        "{$reservation['fullname']} has cancelled their {$reservation['service_type']} reservation scheduled on {$date} at {$timeLabel}.",
+        '/admin/reservations',
+        'reservation',
+        $reservationId
     );
 }
 

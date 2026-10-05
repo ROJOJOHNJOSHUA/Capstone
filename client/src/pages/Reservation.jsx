@@ -5,6 +5,7 @@ import DashboardLayout from '../components/layout/DashboardLayout';
 import StatusBadge from '../components/cards/StatusBadge';
 import LoadingSpinner from '../components/forms/LoadingSpinner';
 import Modal from '../components/forms/Modal';
+import ImagePreviewModal from '../components/forms/ImagePreviewModal';
 import DocumentUpload from '../components/forms/DocumentUpload';
 import FuneralReservationForm from '../components/forms/FuneralReservationForm';
 import PrivateMassReservationForm from '../components/forms/PrivateMassReservationForm';
@@ -18,53 +19,17 @@ import {
 import {
   getReservations,
   createReservation,
+  updateReservation,
   checkAvailability,
   checkMonthlyAvailability,
   getDocumentRequirements,
   uploadReservationDocument,
   getReservationDocuments,
+  fetchReservationDocument,
 } from '../services/api';
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-function StatIconDoc({ className = 'h-5 w-5' }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M6 2.75h8L19.25 8v13.25H6z" />
-      <path d="M13.75 3v5.25H19" />
-      <path d="M9 12.5h6.5M9 16h6.5" />
-    </svg>
-  );
-}
-
-function StatIconHourglass({ className = 'h-5 w-5' }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M6.5 3h11M6.5 21h11M8 3c0 4.5 8 4.5 8 9s-8 4.5-8 9M16 3c0 4.5-8 4.5-8 9s8 4.5 8 9" />
-    </svg>
-  );
-}
-
-function StatIconCheck({ className = 'h-5 w-5' }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M8.5 12.25l2.5 2.5 4.75-5" />
-    </svg>
-  );
-}
-
-function RecordStatCard({ icon, label, value, accent = 'text-[#2f2a22]' }) {
-  return (
-    <div className="rounded-[22px] border border-[#ece4d3] bg-[#fffdf8] p-5 shadow-[0_14px_30px_rgba(83,65,34,0.06)]">
-      <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f5ead5] text-[#a6813f]">{icon}</span>
-        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8a7c5f]">{label}</span>
-      </div>
-      <p className={`mt-3 font-display text-4xl ${accent}`}>{value}</p>
-    </div>
-  );
-}
+const RESERVATIONS_PER_PAGE = 10;
 
 const SERVICE_STEPS = [
   { id: 'service', label: 'Service' },
@@ -196,10 +161,60 @@ function formatSlotTime(time) {
   return `${h12}:${String(minutes).padStart(2, '0')} ${period}`;
 }
 
+function decodeDisplayText(value) {
+  const text = String(value ?? '');
+  if (typeof document === 'undefined' || !text.includes('&')) return text;
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = text;
+  return textarea.value;
+}
+
+function parseReservationDetails(value) {
+  const fields = [];
+  const notes = [];
+  const labelAliases = {
+    fullname: 'Full Name',
+    email: 'Email Address',
+    phone: 'Contact Number',
+    address: 'Address',
+  };
+
+  decodeDisplayText(value)
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .forEach((line) => {
+      const separatorIndex = line.indexOf(':');
+      if (separatorIndex < 1) {
+        notes.push(line);
+        return;
+      }
+
+      const rawLabel = line.slice(0, separatorIndex).trim();
+      const fieldValue = line.slice(separatorIndex + 1).trim();
+      if (!rawLabel || !fieldValue) {
+        notes.push(line);
+        return;
+      }
+
+      if (rawLabel.toLowerCase() === 'additional notes') {
+        notes.push(fieldValue);
+        return;
+      }
+
+      const label = labelAliases[rawLabel.toLowerCase()] || rawLabel;
+      fields.push({ label, value: fieldValue });
+    });
+
+  return { fields, notes };
+}
+
 export default function Reservation() {
   const { user } = useAuth();
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [cancellingReservationId, setCancellingReservationId] = useState(null);
+  const [reservationPage, setReservationPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [form, setForm] = useState({
@@ -231,16 +246,104 @@ export default function Reservation() {
   const [uploadingDocs, setUploadingDocs] = useState(false);
   const [reservationDocuments, setReservationDocuments] = useState({});
   const [loadingDocs, setLoadingDocs] = useState({});
+  const [documentLoadErrors, setDocumentLoadErrors] = useState({});
+  const [documentPreview, setDocumentPreview] = useState(null);
+  const documentPreviewUrl = useRef(null);
+  const documentPreviewRequest = useRef(0);
   const fetchedDocIds = useRef(new Set());
+  const documentRequests = useRef(new Map());
   const submitInProgress = useRef(false);
+  const reservationRefreshInFlight = useRef(false);
+  const cancelReservationInProgress = useRef(false);
 
   const [searchParams] = useSearchParams();
   const formRef = useRef(null);
+
+  useEffect(() => () => {
+    if (documentPreviewUrl.current) {
+      window.URL.revokeObjectURL(documentPreviewUrl.current);
+    }
+  }, []);
+
+  const closeDocumentPreview = () => {
+    documentPreviewRequest.current += 1;
+    if (documentPreviewUrl.current) {
+      window.URL.revokeObjectURL(documentPreviewUrl.current);
+      documentPreviewUrl.current = null;
+    }
+    setDocumentPreview(null);
+  };
+
+  const previewReservationDocument = async (doc) => {
+    const requestId = documentPreviewRequest.current + 1;
+    documentPreviewRequest.current = requestId;
+    setDocumentPreview({ doc, loading: true });
+
+    try {
+      const { blob, contentType } = await fetchReservationDocument(doc.id, { disposition: 'inline' });
+      if (documentPreviewRequest.current !== requestId) return;
+
+      if (!['image/jpeg', 'image/png', 'application/pdf'].includes(contentType)) {
+        throw new Error('Preview is only available for JPG, PNG, and PDF documents.');
+      }
+
+      if (documentPreviewUrl.current) {
+        window.URL.revokeObjectURL(documentPreviewUrl.current);
+      }
+      const url = window.URL.createObjectURL(blob);
+      documentPreviewUrl.current = url;
+      setDocumentPreview({ doc, loading: false, url, contentType });
+    } catch (previewError) {
+      if (documentPreviewRequest.current === requestId) {
+        setDocumentPreview({
+          doc,
+          loading: false,
+          error: previewError.message || 'Could not load document preview.',
+        });
+      }
+    }
+  };
 
   const refreshMonthlyStatuses = (serviceType, monthIso) =>
     checkMonthlyAvailability(monthIso, serviceType)
       .then((r) => setDateStatuses(r.data.dates || {}))
       .catch(() => setDateStatuses({}));
+
+  const loadReservationDocuments = (reservationId) => {
+    const requestKey = String(reservationId);
+    const existingRequest = documentRequests.current.get(requestKey);
+    if (existingRequest) return existingRequest;
+
+    setLoadingDocs((current) => ({ ...current, [reservationId]: true }));
+    setDocumentLoadErrors((current) => {
+      const next = { ...current };
+      delete next[reservationId];
+      return next;
+    });
+
+    const request = getReservationDocuments(reservationId)
+      .then((response) => {
+        setReservationDocuments((current) => ({
+          ...current,
+          [reservationId]: response.data.documents || [],
+        }));
+        fetchedDocIds.current.add(reservationId);
+      })
+      .catch((loadError) => {
+        setDocumentLoadErrors((current) => ({
+          ...current,
+          [reservationId]: loadError.message || 'Could not load uploaded documents.',
+        }));
+        throw loadError;
+      })
+      .finally(() => {
+        setLoadingDocs((current) => ({ ...current, [reservationId]: false }));
+        documentRequests.current.delete(requestKey);
+      });
+
+    documentRequests.current.set(requestKey, request);
+    return request;
+  };
 
   useEffect(() => {
     if (searchParams.get('new') === '1') {
@@ -253,16 +356,45 @@ export default function Reservation() {
     }
   }, [searchParams]);
 
-  const load = () => {
-    setLoading(true);
+  const load = (silent = false) => {
+    if (reservationRefreshInFlight.current) return;
+    reservationRefreshInFlight.current = true;
+    if (!silent) {
+      setLoading(true);
+      setReservationPage(1);
+    }
     getReservations()
-      .then((r) => setReservations(r.data.reservations || []))
-      .catch(() => setError('Failed to load reservations. Please refresh the page.'))
-      .finally(() => setLoading(false));
+      .then((r) => {
+        const updatedReservations = r.data.reservations || [];
+        setReservations(updatedReservations);
+        setViewing((current) => current
+          ? updatedReservations.find((reservation) => reservation.id === current.id) || current
+          : null);
+      })
+      .catch((loadError) => {
+        console.error('Failed to refresh reservations:', loadError);
+        if (!silent) setError('Failed to load reservations. Please refresh the page.');
+      })
+      .finally(() => {
+        reservationRefreshInFlight.current = false;
+        if (!silent) setLoading(false);
+      });
   };
 
   useEffect(() => {
     load();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') load(true);
+    };
+    const interval = window.setInterval(refreshWhenVisible, 10000);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    window.addEventListener('focus', refreshWhenVisible);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      window.removeEventListener('focus', refreshWhenVisible);
+    };
   }, []);
 
   // Load document requirements when service type changes
@@ -276,23 +408,9 @@ export default function Reservation() {
 
   // Load documents for existing reservations (once per reservation)
   useEffect(() => {
-    reservations.forEach((r) => {
-      if (fetchedDocIds.current.has(r.id)) return;
-      fetchedDocIds.current.add(r.id);
-      setLoadingDocs((prev) => ({ ...prev, [r.id]: true }));
-      getReservationDocuments(r.id)
-        .then((res) => {
-          setReservationDocuments((prev) => ({
-            ...prev,
-            [r.id]: res.data.documents || [],
-          }));
-        })
-        .catch(() => {
-          setReservationDocuments((prev) => ({ ...prev, [r.id]: [] }));
-        })
-        .finally(() => {
-          setLoadingDocs((prev) => ({ ...prev, [r.id]: false }));
-        });
+    reservations.forEach((reservation) => {
+      if (fetchedDocIds.current.has(reservation.id)) return;
+      loadReservationDocuments(reservation.id).catch(() => {});
     });
   }, [reservations]);
 
@@ -601,6 +719,11 @@ export default function Reservation() {
       });
       setUploadedFiles({});
       fetchedDocIds.current.add(reservationId);
+      try {
+        await loadReservationDocuments(reservationId);
+      } catch {
+        setError('Reservation submitted, but its uploaded documents could not be loaded. Reopen the reservation details to try again.');
+      }
       load();
     } catch (err) {
       setError(err.message || 'Failed to submit reservation');
@@ -659,6 +782,33 @@ export default function Reservation() {
     input.click();
   };
 
+  const handleCancelReservation = async (reservation) => {
+    if (!['Pending', 'Under Review'].includes(reservation.status) || cancelReservationInProgress.current) return;
+    const serviceLabel = SERVICE_LABELS[reservation.service_type] || reservation.service_type;
+    if (!window.confirm(`Cancel your ${serviceLabel} reservation for ${reservation.reservation_date}?`)) return;
+
+    cancelReservationInProgress.current = true;
+    setCancellingReservationId(reservation.id);
+    setError('');
+    setMsg('');
+    try {
+      await updateReservation({ id: reservation.id, status: 'Cancelled' });
+      setReservations((current) => current.map((item) =>
+        item.id === reservation.id ? { ...item, status: 'Cancelled' } : item
+      ));
+      setViewing((current) => current?.id === reservation.id
+        ? { ...current, status: 'Cancelled' }
+        : current);
+      setMsg('Reservation cancelled successfully.');
+      load(true);
+    } catch (cancelError) {
+      setError(cancelError.message || 'Failed to cancel reservation.');
+    } finally {
+      cancelReservationInProgress.current = false;
+      setCancellingReservationId(null);
+    }
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -668,17 +818,21 @@ export default function Reservation() {
   }
 
   const totalReservations = reservations.length;
-  const pendingCount = reservations.filter((item) => ['Pending', 'Submitted', 'In Review', 'Under Review'].includes(item.status)).length;
-  const approvedCount = reservations.filter((item) => ['Approved', 'Paid'].includes(item.status)).length;
+  const reservationPageCount = Math.max(1, Math.ceil(totalReservations / RESERVATIONS_PER_PAGE));
+  const currentReservationPage = Math.min(reservationPage, reservationPageCount);
+  const visibleReservations = reservations.slice(
+    (currentReservationPage - 1) * RESERVATIONS_PER_PAGE,
+    currentReservationPage * RESERVATIONS_PER_PAGE
+  );
 
   return (
     <DashboardLayout>
-      <div className="mb-6 grid gap-4 md:grid-cols-3">
-        <RecordStatCard icon={<StatIconDoc />} label="Total" value={totalReservations} />
-        <RecordStatCard icon={<StatIconHourglass />} label="Pending" value={pendingCount} accent="text-[#b68a3b]" />
-        <RecordStatCard icon={<StatIconCheck />} label="Approved" value={approvedCount} accent="text-[#1a6a4a]" />
-      </div>
-
+      <div
+        onClickCapture={() => {
+          if (msg) setMsg('');
+          if (error) setError('');
+        }}
+      >
       {msg && <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">{msg}</div>}
 
       {showForm && (
@@ -696,7 +850,7 @@ export default function Reservation() {
             onSubmitted={load}
             onServiceChange={handleServiceChange}
           />
-        ) : <form ref={formRef} onSubmit={(event) => event.preventDefault()} className="mb-6 overflow-hidden rounded-[30px] border border-[#e8dfd0] bg-white shadow-[0_22px_45px_rgba(15,31,45,0.08)]">
+        ) : <form ref={formRef} onSubmit={(event) => event.preventDefault()} className="reservation-request-form mb-6 overflow-hidden rounded-[30px] border border-[#e8dfd0] bg-white shadow-[0_22px_45px_rgba(15,31,45,0.08)]">
           <div className="border-b border-slate-200 bg-slate-50 px-5 py-5 sm:px-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -732,8 +886,8 @@ export default function Reservation() {
             </div>
           </div>
 
-          <div className="grid gap-5 p-5 sm:p-6 xl:grid-cols-[1.2fr_0.8fr]">
-            <div className="space-y-5">
+          <div className="grid min-w-0 gap-4 p-3 sm:gap-5 sm:p-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+            <div className="min-w-0 space-y-5">
               {error && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>}
 
               {currentStep === 0 && (
@@ -794,32 +948,30 @@ export default function Reservation() {
                       </label>
                     ))}
                   </div>
-                  <div className="mb-4">
-                    <section className="w-full max-w-xs overflow-hidden rounded-xl border border-[#e2ddd3] bg-[#fffdf8] shadow-[0_8px_18px_rgba(39,55,70,0.08)]" aria-label="Parish GCash payment account">
-                      <div className="flex items-center justify-between gap-3 bg-[#168fe0] px-4 py-3 text-white">
-                        <div>
-                          <h3 className="text-base font-bold leading-tight">GCash</h3>
-                          </div>
-                        <span className="shrink-0 rounded-md border border-white/25 bg-white/10 px-2 py-1 text-[8px] font-semibold uppercase tracking-[0.1em] text-white">Mobile wallet</span>
+                  <section className="mt-6 space-y-4" aria-label="Payment information">
+                    <div className="overflow-hidden rounded-2xl border border-[#e2ddd3] bg-[#fffdf8] shadow-[0_8px_18px_rgba(39,55,70,0.06)]">
+                      <div className="flex items-center justify-between gap-3 bg-[#168fe0] px-4 py-3 text-white sm:px-5">
+                        <h3 className="text-base font-bold leading-tight">GCash</h3>
+                        <span className="shrink-0 rounded-md border border-white/25 bg-white/10 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.1em] text-white">Mobile wallet</span>
                       </div>
-                      <dl className="divide-y divide-[#eee7db] px-4">
-                        <div className="grid grid-cols-[minmax(5.5rem,0.8fr)_minmax(0,1.2fr)] items-center gap-2.5 py-3">
-                          <dt className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[#8a7c5f]">Account name</dt>
-                          <dd className="text-right text-xs font-semibold leading-5 text-[#273746]">holy family parish</dd>
+                      <dl className="divide-y divide-[#eee7db] px-4 sm:px-5">
+                        <div className="grid grid-cols-1 gap-1 py-3 sm:grid-cols-[minmax(8rem,0.8fr)_minmax(0,1.2fr)] sm:items-center sm:gap-4">
+                          <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8a7c5f]">Account name</dt>
+                          <dd className="break-words text-sm font-semibold leading-5 text-[#273746] sm:text-right">holy family parish</dd>
                         </div>
-                        <div className="grid grid-cols-[minmax(5.5rem,0.8fr)_minmax(0,1.2fr)] items-center gap-2.5 py-3">
-                          <dt className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[#8a7c5f]">GCash number</dt>
-                          <dd className="text-right font-mono text-sm font-semibold tabular-nums tracking-[0.03em] text-[#1f3342]">0967 394 1188</dd>
+                        <div className="grid grid-cols-1 gap-1 py-3 sm:grid-cols-[minmax(8rem,0.8fr)_minmax(0,1.2fr)] sm:items-center sm:gap-4">
+                          <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8a7c5f]">GCash number</dt>
+                          <dd className="font-mono text-sm font-semibold tabular-nums tracking-[0.04em] text-[#1f3342] sm:text-right">0967 394 1188</dd>
                         </div>
                       </dl>
-                    </section>
-                  </div>
-                  {form.service_type === 'Mass Intention' && (
-                    <div className="rounded-[18px] border border-[#e7d7ac] bg-[#f5efdf] p-4 text-sm text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
-                      <p className="font-semibold text-[#0f2337]">Mass Intention Fee: ₱100.00 per Mass Intention</p>
-                      <p className="mt-2 leading-relaxed">Please send the payment using the parish payment account and upload your receipt as proof.</p>
                     </div>
-                  )}
+                    {form.service_type === 'Mass Intention' && (
+                      <div className="rounded-2xl border border-[#e7d7ac] bg-[#f5efdf] p-4 text-sm leading-6 text-[#514638] sm:p-5">
+                        <p className="font-semibold text-[#594726]">Mass Intention Fee <span className="ml-1 whitespace-nowrap">₱100.00 per Mass Intention</span></p>
+                        <p className="mt-1.5">Please send the payment using the parish GCash account above, then upload your receipt as proof.</p>
+                      </div>
+                    )}
+                  </section>
                 </div>
               )}
 
@@ -1113,13 +1265,7 @@ export default function Reservation() {
 
               {(isMarriageFlow ? currentStep === 4 : (isBaptismFlow ? currentStep === 4 : currentStep === 3)) && (
                 <div className="space-y-5">
-                  <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4 sm:p-5">
-                    <div className="mb-3 flex items-center justify-between">
-                      <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Documents</h3>
-                      <span className="rounded-full bg-[#f5ead0] px-2 py-1 text-[10px] font-medium text-[#775b25]">Required</span>
-                    </div>
-                    <DocumentUpload requirements={docRequirements} initialFiles={uploadedFiles} onFilesChange={setUploadedFiles} />
-                  </div>
+                  <DocumentUpload requirements={docRequirements} initialFiles={uploadedFiles} onFilesChange={setUploadedFiles} />
 
                   <div className="rounded-[24px] border border-[#d7b57a] bg-[#fffaf0] p-4 sm:p-5">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#775b25]">Before you continue</p>
@@ -1133,49 +1279,52 @@ export default function Reservation() {
               )}
 
               {!isMarriageFlow && (isBaptismFlow ? currentStep === 5 : currentStep === 4) && (
-                <div className="space-y-5">
-                  <div className="rounded-[24px] border border-slate-200 bg-[#f8fafc] p-4 sm:p-5">
-                    <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Review Reservation</h3>
-                    <div className="space-y-3 text-sm text-slate-700">
-                      <div className="rounded-xl border border-slate-200 bg-white p-3">
+                <div className="min-w-0 space-y-4 sm:space-y-5">
+                  <div className="min-w-0 w-full max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-[#f8fafc] p-3 sm:rounded-[24px] sm:p-5">
+                    <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 sm:tracking-[0.18em]">Review Reservation</h3>
+                    <div className="min-w-0 space-y-3 text-sm text-slate-700">
+                      <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
                         <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Service</div>
                         <div className="mt-1 font-semibold text-[#0f2337]">{SERVICE_LABELS[form.service_type] || form.service_type}</div>
                       </div>
                       {form.service_type === 'Mass Intention' && (
-                        <div className="rounded-xl border border-[#f2e4bb] bg-[#fffaf0] p-3">
+                        <div className="min-w-0 rounded-xl border border-[#f2e4bb] bg-[#fffaf0] p-3 sm:p-4">
                           <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Payment</div>
                           <div className="mt-1 font-semibold text-[#0f2337]">Mass Intention Fee: ₱100.00</div>
                           <div className="mt-1 text-sm text-slate-700">Payment method: GCash</div>
                           <div className="mt-1 text-sm text-slate-700">Payment Receipt: {uploadedFiles.payment_receipt ? 'Uploaded' : 'Missing'}</div>
                         </div>
                       )}
-                      <div className="rounded-xl border border-slate-200 bg-white p-3">
+                      <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
                         <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Date & Time</div>
-                        <div className="mt-1 font-semibold text-[#0f2337]">
+                        <div className="mt-1 break-words font-semibold leading-5 text-[#0f2337]">
                           {form.reservation_date ? new Date(form.reservation_date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : 'Not selected'}
                           {' · '}
                           {form.reservation_time ? formatSlotTime(form.reservation_time) : 'Not selected'}
                         </div>
                       </div>
-                      <div className="rounded-xl border border-slate-200 bg-white p-3">
+                      <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
                         <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Details</div>
-                        <ul className="mt-2 space-y-1">
+                        <ul className="mt-2 min-w-0 space-y-2">
                           {Object.entries(form.serviceDetails || {}).map(([key, value]) => {
                             if (!String(value || '').trim()) return null;
                             const label = (SERVICE_DETAIL_FIELDS[form.service_type] || []).find((item) => item.key === key)?.label || key;
                             return (
-                              <li key={key} className="flex gap-2"><span className="font-medium text-slate-600">{label}:</span><span>{value}</span></li>
+                              <li key={key} className="min-w-0 border-b border-slate-100 pb-2 last:border-0 last:pb-0 sm:grid sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)] sm:gap-2">
+                                <span className="block text-xs font-semibold text-slate-600 sm:text-sm">{label}</span>
+                                <span className="mt-0.5 block break-words leading-5 sm:mt-0">{value}</span>
+                              </li>
                             );
                           })}
                         </ul>
                       </div>
-                      <div className="rounded-xl border border-slate-200 bg-white p-3">
+                      <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
                         <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Uploaded Requirements</div>
                         <div className="mt-2 flex flex-wrap gap-2">
                           {Object.keys(uploadedFiles).length > 0 ? (
                             Object.keys(uploadedFiles).map((docType) => (
-                              <span key={docType} className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">
-                                {docType.replace(/_/g, ' ')}
+                              <span key={docType} className="max-w-full break-words rounded-lg bg-emerald-100 px-2.5 py-1.5 text-xs font-medium text-emerald-700">
+                                {(docRequirements.find((document) => document.type === docType)?.name || docType).replace(/_/g, ' ')}
                               </span>
                             ))
                           ) : (
@@ -1183,10 +1332,10 @@ export default function Reservation() {
                           )}
                         </div>
                       </div>
-                      <div className="rounded-xl border border-slate-200 bg-white p-3">
+                      <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
                         <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Notes</label>
                         <textarea
-                          className="input-field min-h-[80px]"
+                          className="input-field min-h-[80px] min-w-0 resize-y"
                           value={form.requirements}
                           onChange={(e) => setForm({ ...form, requirements: e.target.value })}
                         />
@@ -1197,39 +1346,58 @@ export default function Reservation() {
               )}
 
               {isMarriageFlow && currentStep === 5 && (
-                <div className="space-y-5">
-                  <div className="rounded-[24px] border border-slate-200 bg-[#f8fafc] p-4 sm:p-5">
-                    <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Review Marriage Request</h3>
-                    <div className="space-y-4 text-sm text-slate-700">
-                      <div className="rounded-xl border border-slate-200 bg-white p-3">
+                <div className="min-w-0 space-y-4 sm:space-y-5">
+                  <div className="min-w-0 w-full max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-[#f8fafc] p-3 sm:rounded-[24px] sm:p-5">
+                    <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 sm:tracking-[0.18em]">Review Marriage Request</h3>
+                    <div className="min-w-0 w-full max-w-full space-y-3 text-sm text-slate-700 sm:space-y-4">
+                      <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Service Type</p>
                         <p className="mt-1 font-semibold text-[#0f2337]">{SERVICE_LABELS[form.service_type] || form.service_type}</p>
                       </div>
-                      <div className="rounded-xl border border-slate-200 bg-white p-3">
+                      <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Personal Information</p>
-                        {marriagePersonalFields.map(([key, label]) => <p key={key} className="mt-1"><strong>{label}:</strong> {form.personalDetails?.[key] || 'Not provided'}</p>)}
+                        <div className="mt-2 space-y-2">
+                          {marriagePersonalFields.map(([key, label]) => (
+                            <p key={key} className="grid min-w-0 grid-cols-1 border-b border-slate-100 pb-2 last:border-0 last:pb-0 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)] sm:gap-2">
+                              <strong className="block min-w-0 text-xs text-slate-600 sm:text-sm">{label}</strong>
+                              <span className="mt-0.5 block min-w-0 break-all leading-5 sm:mt-0">{form.personalDetails?.[key] || 'Not provided'}</span>
+                            </p>
+                          ))}
+                        </div>
                       </div>
                       {[
                         ['Bride Information', marriageCoupleFields.slice(0, 6)],
                         ['Groom Information', marriageCoupleFields.slice(6)],
                       ].map(([heading, fields]) => (
-                        <div key={heading} className="rounded-xl border border-slate-200 bg-white p-3">
+                        <div key={heading} className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">{heading}</p>
-                          {fields.map((field) => <p key={field.key} className="mt-1"><strong>{field.label}:</strong> {form.serviceDetails[field.key] || 'Not provided'}</p>)}
+                          <div className="mt-2 space-y-2">
+                            {fields.map((field) => (
+                              <p key={field.key} className="grid min-w-0 grid-cols-1 border-b border-slate-100 pb-2 last:border-0 last:pb-0 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)] sm:gap-2">
+                                <strong className="block min-w-0 text-xs text-slate-600 sm:text-sm">{field.label}</strong>
+                                <span className="mt-0.5 block min-w-0 break-words leading-5 sm:mt-0">{form.serviceDetails[field.key] || 'Not provided'}</span>
+                              </p>
+                            ))}
+                          </div>
                         </div>
                       ))}
-                      <div className="rounded-xl border border-slate-200 bg-white p-3">
+                      <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Date &amp; Time</p>
-                        <p className="mt-1 font-semibold text-[#0f2337]">
+                        <p className="mt-1 break-words font-semibold leading-5 text-[#0f2337]">
                           {form.reservation_date ? new Date(form.reservation_date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : 'Not selected'}
                           {' · '}
                           {form.reservation_time ? formatSlotTime(form.reservation_time) : 'Not selected'}
                         </p>
                       </div>
-                      <div className="rounded-xl border border-slate-200 bg-white p-3">
+                      <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Marriage Requirements</p>
-                        <div className="mt-2 space-y-1">
-                          {docRequirements.map((document) => <p key={document.type}><strong>{document.name}:</strong> {uploadedFiles[document.type]?.name || 'Missing'}</p>)}
+                        <div className="mt-2 space-y-2">
+                          {docRequirements.map((document) => (
+                            <p key={document.type} className="grid min-w-0 grid-cols-1 border-b border-slate-100 pb-2 last:border-0 last:pb-0 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)] sm:gap-2">
+                              <strong className="block min-w-0 text-xs text-slate-600 sm:text-sm">{document.name}</strong>
+                              <span className="mt-0.5 block min-w-0 break-all leading-5 sm:mt-0">{uploadedFiles[document.type]?.name || 'Missing'}</span>
+                            </p>
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -1298,7 +1466,7 @@ export default function Reservation() {
               </tr>
             </thead>
             <tbody>
-              {reservations.map((r) => {
+              {visibleReservations.map((r) => {
                 const docs = reservationDocuments[r.id] || [];
                 const verifiedCount = docs.filter(d => d.status === 'Verified').length;
                 const rejectedCount = docs.filter(d => d.status === 'Rejected').length;
@@ -1348,13 +1516,28 @@ export default function Reservation() {
                       )}
                     </td>
                     <td className="px-5 py-4">
-                      <button
-                        type="button"
-                        onClick={() => setViewing(r)}
-                        className="inline-flex items-center gap-1 text-sm font-semibold text-[#a6813f] transition hover:text-[#8d6928]"
-                      >
-                        View <span aria-hidden="true">›</span>
-                      </button>
+                      <div className="flex items-center gap-4">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setViewing(r);
+                            loadReservationDocuments(r.id).catch(() => {});
+                          }}
+                          className="inline-flex items-center gap-1 text-sm font-semibold text-[#a6813f] transition hover:text-[#8d6928]"
+                        >
+                          View <span aria-hidden="true">›</span>
+                        </button>
+                        {['Pending', 'Under Review'].includes(r.status) && (
+                          <button
+                            type="button"
+                            onClick={() => handleCancelReservation(r)}
+                            disabled={cancellingReservationId !== null}
+                            className="text-sm font-semibold text-red-600 transition hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {cancellingReservationId === r.id ? 'Cancelling...' : 'Cancel'}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -1369,66 +1552,180 @@ export default function Reservation() {
           </div>
         )}
       </div>
+      {totalReservations > 0 && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-[#6e7274]">
+            Showing {(currentReservationPage - 1) * RESERVATIONS_PER_PAGE + 1}–{Math.min(currentReservationPage * RESERVATIONS_PER_PAGE, totalReservations)} of {totalReservations} reservations
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setReservationPage(currentReservationPage - 1)}
+              disabled={currentReservationPage === 1}
+              className="rounded-lg border border-[#e7dfd2] bg-white px-4 py-2 text-sm font-medium text-[#58616a] transition hover:bg-[#faf5e9] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <span className="px-1 text-sm text-[#6e7274]">
+              Page {currentReservationPage} of {reservationPageCount}
+            </span>
+            <button
+              type="button"
+              onClick={() => setReservationPage(currentReservationPage + 1)}
+              disabled={currentReservationPage === reservationPageCount}
+              className="rounded-lg border border-[#e7dfd2] bg-white px-4 py-2 text-sm font-medium text-[#58616a] transition hover:bg-[#faf5e9] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
-      <Modal isOpen={Boolean(viewing)} onClose={() => setViewing(null)} title="Reservation Details" size="lg" backdropClassName="bg-[#14212b]/45">
+      <Modal isOpen={Boolean(viewing)} onClose={() => setViewing(null)} title="Reservation Details" size="xl" backdropClassName="bg-[#14212b]/45">
         {viewing && (
-          <div className="space-y-4 text-sm">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl bg-[#faf5ea] p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9a8666]">Service</p>
-                <p className="mt-1 font-medium text-[#2f2a22]">{SERVICE_LABELS[viewing.service_type] || viewing.service_type}</p>
+          <div className="space-y-5 text-sm">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border border-[#f1e9da] bg-[#faf5ea] p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9a8666]">Service</p>
+                <p className="mt-1.5 font-semibold text-[#2f2a22]">{SERVICE_LABELS[viewing.service_type] || viewing.service_type}</p>
               </div>
-              <div className="rounded-xl bg-[#faf5ea] p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9a8666]">Status</p>
-                <p className="mt-1"><StatusBadge status={viewing.status} /></p>
+              <div className="rounded-xl border border-[#f1e9da] bg-[#faf5ea] p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9a8666]">Status</p>
+                <p className="mt-1.5"><StatusBadge status={viewing.status} /></p>
               </div>
-              <div className="rounded-xl bg-[#faf5ea] p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9a8666]">Date</p>
-                <p className="mt-1 font-medium text-[#2f2a22]">{viewing.reservation_date}</p>
+              <div className="rounded-xl border border-[#f1e9da] bg-[#faf5ea] p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9a8666]">Date</p>
+                <p className="mt-1.5 font-medium text-[#2f2a22]">
+                  {viewing.reservation_date
+                    ? new Date(`${viewing.reservation_date}T12:00:00`).toLocaleDateString(undefined, {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })
+                    : 'Not provided'}
+                </p>
               </div>
-              <div className="rounded-xl bg-[#faf5ea] p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9a8666]">Time</p>
-                <p className="mt-1 font-medium text-[#2f2a22]">{formatSlotTime(viewing.reservation_time || '')}</p>
+              <div className="rounded-xl border border-[#f1e9da] bg-[#faf5ea] p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9a8666]">Time</p>
+                <p className="mt-1.5 font-medium text-[#2f2a22]">{formatSlotTime(viewing.reservation_time || '')}</p>
               </div>
             </div>
             {viewing.requirements && (
-              <div className="rounded-xl border border-[#f1e9da] p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9a8666]">Details</p>
-                <p className="mt-1 whitespace-pre-line text-[#5b5344]">{viewing.requirements}</p>
-              </div>
+              (() => {
+                const { fields, notes } = parseReservationDetails(viewing.requirements);
+                return (
+                  <section className="rounded-2xl border border-[#eee5d5] bg-white p-4 sm:p-5">
+                    <h4 className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7957]">Request Details</h4>
+                    {fields.length > 0 && (
+                      <dl className="grid gap-3 sm:grid-cols-2">
+                        {fields.map((field, index) => (
+                          <div key={`${field.label}-${index}`} className="min-w-0 rounded-xl border border-[#f1e9da] bg-[#fdfbf7] p-3.5">
+                            <dt className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#9a8666]">{field.label}</dt>
+                            <dd className="mt-1.5 break-words leading-5 text-[#413a30]">
+                              {['n/a', 'na'].includes(field.value.toLowerCase()) ? 'Not provided' : field.value}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    )}
+                    {notes.length > 0 && (
+                      <div className={`${fields.length > 0 ? 'mt-4' : ''} rounded-xl bg-[#faf5ea] p-4`}>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#8d7957]">Additional Notes</p>
+                        <p className="mt-1.5 whitespace-pre-line break-words leading-6 text-[#5b5344]">{notes.join('\n')}</p>
+                      </div>
+                    )}
+                  </section>
+                );
+              })()
             )}
             {viewing.remarks && (
-              <div className="rounded-xl border border-[#f1e9da] p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9a8666]">Parish Remarks</p>
-                <p className="mt-1 text-[#5b5344]">{viewing.remarks}</p>
+              <div className="rounded-xl border border-[#f1e9da] bg-[#fdfbf7] p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9a8666]">Parish Remarks</p>
+                <p className="mt-2 break-words leading-6 text-[#5b5344]">{decodeDisplayText(viewing.remarks)}</p>
               </div>
             )}
-            <div className="rounded-xl border border-[#f1e9da] p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9a8666]">Documents</p>
-              {(reservationDocuments[viewing.id] || []).length > 0 ? (
-                <ul className="mt-2 space-y-1.5">
+            <div className="rounded-xl border border-[#f1e9da] bg-white p-4">
+              <h4 className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7957]">Documents</h4>
+              {loadingDocs[viewing.id] ? (
+                <p className="mt-2 text-[#9a8f78]">Loading uploaded documents...</p>
+              ) : documentLoadErrors[viewing.id] ? (
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-3 text-sm">
+                  <p className="text-rose-700">{documentLoadErrors[viewing.id]}</p>
+                  <button
+                    type="button"
+                    onClick={() => loadReservationDocuments(viewing.id).catch(() => {})}
+                    className="rounded-lg border border-[#e3d9c7] px-3 py-2 font-medium text-[#745d32] transition hover:bg-[#faf5ea]"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : (reservationDocuments[viewing.id] || []).length > 0 ? (
+                <ul className="mt-3 space-y-2">
                   {(reservationDocuments[viewing.id] || []).map((d) => (
-                    <li key={d.id} className="flex items-center justify-between gap-3 text-[#5b5344]">
-                      <span>{d.document_name}</span>
-                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                        d.status === 'Verified'
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : d.status === 'Rejected'
-                            ? 'bg-rose-100 text-rose-700'
-                            : 'bg-amber-100 text-amber-700'
-                      }`}>
-                        {d.status}
+                    <li key={d.id} className="flex items-center justify-between gap-3 rounded-lg bg-[#fdfbf7] px-3 py-2.5 text-[#5b5344]">
+                      <span className="min-w-0 flex-1 break-words">
+                        <span className="block font-medium">{d.document_name}</span>
+                        {d.original_filename && (
+                          <span className="mt-0.5 block text-xs text-[#817663]">{d.original_filename}</span>
+                        )}
                       </span>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                          d.status === 'Verified'
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : d.status === 'Rejected'
+                              ? 'bg-rose-100 text-rose-700'
+                              : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {d.status}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => previewReservationDocument(d)}
+                          className="rounded-lg border border-[#e3d9c7] bg-white px-3 py-1.5 text-xs font-semibold text-[#745d32] transition hover:bg-[#faf5ea]"
+                        >
+                          Preview
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="mt-1 text-[#9a8f78]">No documents uploaded.</p>
+                <p className="mt-2 text-[#9a8f78]">No documents uploaded.</p>
               )}
             </div>
           </div>
         )}
       </Modal>
+      <ImagePreviewModal
+        isOpen={Boolean(documentPreview?.url)}
+        src={documentPreview?.url}
+        alt={documentPreview?.doc?.original_filename || documentPreview?.doc?.document_name}
+        type={documentPreview?.contentType}
+        title={documentPreview?.doc?.document_name || 'Document Preview'}
+        onClose={closeDocumentPreview}
+      />
+      {documentPreview && !documentPreview.url && (
+        <Modal
+          isOpen
+          onClose={closeDocumentPreview}
+          title={documentPreview.doc.document_name || 'Document Preview'}
+          size="md"
+          backdropClassName="bg-[#14212b]/60"
+        >
+          {documentPreview.loading ? (
+            <p className="py-4 text-sm text-[#6e7274]">Loading preview...</p>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-rose-700">{documentPreview.error}</p>
+              <button type="button" onClick={() => previewReservationDocument(documentPreview.doc)} className="btn-primary">
+                Try again
+              </button>
+            </div>
+          )}
+        </Modal>
+      )}
+      </div>
     </DashboardLayout>
   );
 }
