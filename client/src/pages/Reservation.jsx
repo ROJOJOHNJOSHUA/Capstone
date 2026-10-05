@@ -649,42 +649,36 @@ export default function Reservation() {
         ? { ...form.personalDetails, ...form.serviceDetails }
         : form.serviceDetails;
       const mergedRequirements = buildServiceRequirements(submittedDetails, form.requirements);
-      let payload = {
-        ...form,
+      const payload = {
+        service_type: form.service_type,
         reservation_date: reservationDate,
         reservation_time: reservationTime,
         serviceDetails: submittedDetails,
         requirements: mergedRequirements,
       };
-      const uploadedDocEntries = Object.entries(uploadedFiles);
-      const hasInlineUploadFiles = uploadedDocEntries.length > 0;
+      const reservationPayload = new FormData();
+      reservationPayload.append('service_type', payload.service_type);
+      reservationPayload.append('reservation_date', payload.reservation_date);
+      reservationPayload.append('reservation_time', payload.reservation_time);
+      reservationPayload.append('requirements', payload.requirements);
+      reservationPayload.append('serviceDetails', JSON.stringify(payload.serviceDetails));
 
-      if (form.service_type === 'Mass Intention' || hasInlineUploadFiles) {
-        payload = new FormData();
-        payload.append('service_type', form.service_type);
-        payload.append('reservation_date', form.reservation_date);
-        payload.append('reservation_time', form.reservation_time);
-        payload.append('requirements', mergedRequirements);
-        payload.append('serviceDetails', JSON.stringify(submittedDetails));
-
-        if (form.service_type === 'Mass Intention') {
-          payload.append('intention_name', form.serviceDetails.intention_name);
-          payload.append('prayer_intention', form.serviceDetails.prayer_intention);
-          payload.append('payment_receipt', uploadedFiles.payment_receipt);
-        }
-
-        if (hasInlineUploadFiles) {
-          uploadedDocEntries.forEach(([docType, file]) => {
-            if (!file) return;
-            payload.append(docType, file, file.name);
-          });
-        }
+      if (form.service_type === 'Mass Intention') {
+        reservationPayload.append('intention_name', form.serviceDetails.intention_name);
+        reservationPayload.append('prayer_intention', form.serviceDetails.prayer_intention);
       }
 
-      const response = await createReservation(payload);
+      const inlineUploadTypes = ['Mass Intention', 'Private Mass'];
+      if (inlineUploadTypes.includes(form.service_type)) {
+        Object.entries(uploadedFiles).forEach(([docType, file]) => {
+          if (file) reservationPayload.append(docType, file, file.name);
+        });
+      }
+
+      const response = await createReservation(reservationPayload);
       const reservationId = response.data.id;
 
-      const uploadPromises = (form.service_type === 'Mass Intention' || hasInlineUploadFiles) ? [] : Object.entries(uploadedFiles).map(([docType, file]) => {
+      const uploadPromises = inlineUploadTypes.includes(form.service_type) ? [] : Object.entries(uploadedFiles).map(([docType, file]) => {
         const formData = new FormData();
         formData.append('reservation_id', reservationId);
         formData.append('document_type', docType);
@@ -726,7 +720,12 @@ export default function Reservation() {
       }
       load();
     } catch (err) {
-      setError(err.message || 'Failed to submit reservation');
+      const validationDetails = err.errors && typeof err.errors === 'object'
+        ? Object.values(err.errors).filter(Boolean).join(' ')
+        : '';
+      setError(validationDetails
+        ? `${err.message || 'Validation failed.'} ${validationDetails}`
+        : err.message || 'Failed to submit reservation');
     } finally {
       setUploadingDocs(false);
       submitInProgress.current = false;

@@ -111,7 +111,11 @@ export const deleteUser = (id) => api.delete(`/auth/users.php?id=${id}`);
 
 export const getReservations = (status) =>
   api.get('/reservations/index.php', { params: status ? { status } : {} });
-export const createReservation = (data) => api.post('/reservations/index.php', data, data instanceof FormData ? { headers: { 'Content-Type': false } } : undefined);
+export const createReservation = (data) => data instanceof FormData
+  ? api.post('/reservations/index.php', data, { headers: { 'Content-Type': false } })
+  : api.post('/reservations/index.php', JSON.stringify(data), {
+      headers: { 'Content-Type': 'application/json' },
+    });
 export const updateReservation = (data) => api.patch('/reservations/index.php', data);
 export const checkAvailability = (date, service_type) =>
   api.get('/reservations/availability.php', { params: { date, service_type } });
