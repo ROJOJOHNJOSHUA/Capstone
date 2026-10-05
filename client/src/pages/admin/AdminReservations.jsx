@@ -13,6 +13,7 @@ const DOCUMENT_STATUS_COLORS = {
   Verified: 'bg-green-100 text-green-800',
   Rejected: 'bg-red-100 text-red-800',
 };
+const ITEMS_PER_PAGE = 10;
 
 function parseServiceDetails(value) {
   try {
@@ -252,6 +253,7 @@ export default function AdminReservations() {
   const [items, setItems] = useState([]);
   const [filter, setFilter] = useState('Under Review');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [modal, setModal] = useState(null);
   const [remarks, setRemarks] = useState('');
   const [documents, setDocuments] = useState([]);
@@ -343,6 +345,12 @@ export default function AdminReservations() {
 
     return matchesFilter && matchesSearch;
   });
+  const pageCount = Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE));
+  const currentPage = Math.min(page, pageCount);
+  const paginatedItems = filteredItems.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   const handleAction = async (status) => {
     setActionLoading(true);
@@ -528,7 +536,7 @@ export default function AdminReservations() {
       <div className="mb-5 grid gap-4 rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-4 shadow-sm sm:grid-cols-[minmax(12rem,0.8fr)_minmax(16rem,1.2fr)] sm:items-end">
         <div>
           <label htmlFor="reservation-status-filter" className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">Filter status</label>
-          <select id="reservation-status-filter" className="h-11 w-full rounded-md border border-[#e7dfd2] bg-white px-4 text-sm text-[#58616a] outline-none focus:border-[#b18a45] focus:ring-2 focus:ring-[#d7b57a]/20" value={filter} onChange={(e) => setFilter(e.target.value)}>
+          <select id="reservation-status-filter" className="h-11 w-full rounded-md border border-[#e7dfd2] bg-white px-4 text-sm text-[#58616a] outline-none focus:border-[#b18a45] focus:ring-2 focus:ring-[#d7b57a]/20" value={filter} onChange={(e) => { setFilter(e.target.value); setPage(1); }}>
             <option value="All">All Status</option>
             {STATUSES.filter((status) => status !== 'Pending').map((s) => (
               <option key={s} value={s}>
@@ -545,7 +553,7 @@ export default function AdminReservations() {
               id="reservation-search"
               type="search"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => { setSearch(event.target.value); setPage(1); }}
               placeholder="Name, Gmail, or phone number"
               className="h-11 w-full rounded-md border border-[#e7dfd2] bg-white pl-10 pr-4 text-sm text-[#1f3342] outline-none placeholder:text-[#92999d] focus:border-[#b18a45] focus:ring-2 focus:ring-[#d7b57a]/20"
             />
@@ -569,7 +577,7 @@ export default function AdminReservations() {
                 </tr>
               </thead>
               <tbody>
-                {filteredItems.map((r) => (
+                {paginatedItems.map((r) => (
                   <tr key={r.id} className="border-b border-[#eee7db] transition hover:bg-[#faf5e9]">
                     <td className="px-5 py-4">
                       <div className="font-medium text-[#273746]">{r.fullname}</div>
@@ -628,6 +636,18 @@ export default function AdminReservations() {
         )}
         {!loading && filteredItems.length === 0 && <p className="px-5 py-6 text-sm text-gray-500">{normalizedSearch ? 'No reservations match your search.' : 'No reservations found.'}</p>}
       </div>
+      {!loading && filteredItems.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-[#6e7274]">
+            Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredItems.length)} of {filteredItems.length} reservations
+          </p>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setPage(currentPage - 1)} disabled={currentPage === 1} className="rounded-lg border border-[#e7dfd2] bg-white px-4 py-2 text-sm font-medium text-[#58616a] transition hover:bg-[#faf5e9] disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
+            <span className="text-sm text-[#6e7274]">Page {currentPage} of {pageCount}</span>
+            <button type="button" onClick={() => setPage(currentPage + 1)} disabled={currentPage === pageCount} className="rounded-lg border border-[#e7dfd2] bg-white px-4 py-2 text-sm font-medium text-[#58616a] transition hover:bg-[#faf5e9] disabled:cursor-not-allowed disabled:opacity-50">Next</button>
+          </div>
+        </div>
+      )}
 
       <Modal isOpen={!!modal} onClose={closeModal} title="Review Reservation" size="xl">
         {modal && (

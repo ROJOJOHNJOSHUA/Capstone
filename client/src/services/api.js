@@ -233,13 +233,15 @@ export const getReportsNotifications = (params) => api.get('/reports/notificatio
 export const getReportsDashboard = (params) => api.get('/reports/dashboard.php', { params });
 export const exportReports = (params) => api.get('/reports/export.php', { params, responseType: 'blob' });
 
-export const getNotifications = () => api.get('/notifications/index.php');
-export const markNotificationRead = (id) =>
-  api.patch('/notifications/index.php', { id });
+export const getNotifications = (params) => api.get('/notifications/index.php', { params });
+export const markNotificationRead = (id, isRead = true) =>
+  api.patch('/notifications/index.php', { id, is_read: isRead });
 export const markAllNotificationsRead = () =>
   api.patch('/notifications/index.php', { mark_all_read: true });
 export const deleteNotification = (id) =>
   api.delete(`/notifications/index.php?id=${id}`);
+export const deleteAllNotifications = (filter) =>
+  api.delete('/notifications/index.php', { params: { filter } });
 
 export const getSettings = () => api.get('/settings/index.php');
 export const updateSettings = (data) => api.patch('/settings/index.php', data);

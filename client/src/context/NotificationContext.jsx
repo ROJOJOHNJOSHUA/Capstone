@@ -1,5 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
+  deleteAllNotifications as deleteAllNotificationsApi,
   deleteNotification as deleteNotificationApi,
   getNotifications,
   markAllNotificationsRead,
@@ -13,23 +14,43 @@ export function NotificationProvider({ children }) {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [readCount, setReadCount] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
+  const [filteredCount, setFilteredCount] = useState(0);
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const queryRef = useRef(null);
+  const requestIdRef = useRef(0);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (params) => {
     if (!user) {
+      requestIdRef.current += 1;
+      queryRef.current = null;
       setNotifications([]);
       setUnreadCount(0);
+      setReadCount(0);
+      setTotalCount(0);
+      setFilteredCount(0);
       return;
     }
+    if (params) queryRef.current = params;
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     try {
-      const res = await getNotifications();
+      const res = await getNotifications(queryRef.current || undefined);
+      if (requestId !== requestIdRef.current) return;
       setNotifications(res.data?.notifications || []);
       setUnreadCount(res.data?.unread_count ?? 0);
-    } catch {
-      /* ignore polling errors */
+      setReadCount(res.data?.read_count ?? 0);
+      setTotalCount(res.data?.total_count ?? 0);
+      setFilteredCount(res.data?.filtered_count ?? res.data?.total_count ?? 0);
+      setError('');
+    } catch (requestError) {
+      if (requestId === requestIdRef.current) {
+        setError(requestError.message || 'Failed to load notifications.');
+      }
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
   }, [user]);
 
@@ -41,31 +62,33 @@ export function NotificationProvider({ children }) {
   }, [refresh, user]);
 
   const markRead = async (id) => {
-    await markNotificationRead(id);
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, is_read: 1 } : n))
-    );
-    setUnreadCount((c) => Math.max(0, c - 1));
+    await markNotificationRead(id, true);
+    await refresh();
+  };
+
+  const markUnread = async (id) => {
+    await markNotificationRead(id, false);
+    await refresh();
   };
 
   const markAllRead = async () => {
     await markAllNotificationsRead();
-    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: 1 })));
-    setUnreadCount(0);
+    await refresh();
   };
 
   const remove = async (id) => {
     await deleteNotificationApi(id);
-    setNotifications((prev) => {
-      const wasUnread = prev.some((n) => n.id === id && !Number(n.is_read));
-      if (wasUnread) setUnreadCount((c) => Math.max(0, c - 1));
-      return prev.filter((n) => n.id !== id);
-    });
+    await refresh();
+  };
+
+  const removeAll = async (filter) => {
+    await deleteAllNotificationsApi(filter);
+    await refresh();
   };
 
   return (
     <NotificationContext.Provider
-      value={{ notifications, unreadCount, loading, refresh, markRead, markAllRead, remove }}
+      value={{ notifications, unreadCount, readCount, totalCount, filteredCount, loading, error, refresh, markRead, markUnread, markAllRead, remove, removeAll }}
     >
       {children}
     </NotificationContext.Provider>

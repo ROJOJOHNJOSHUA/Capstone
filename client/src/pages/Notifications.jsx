@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import LoadingSpinner from '../components/forms/LoadingSpinner';
 import Modal from '../components/forms/Modal';
 import { useNotifications } from '../context/NotificationContext';
 import { useSettings } from '../context/SettingsContext';
+
+const PAGE_SIZE = 10;
 
 function formatWhen(createdAt) {
   if (!createdAt) return '';
@@ -13,29 +15,86 @@ function formatWhen(createdAt) {
 
 export default function Notifications() {
   const { t } = useSettings();
-  const { notifications, unreadCount, loading, markRead, markAllRead, remove } = useNotifications();
+  const {
+    notifications,
+    unreadCount,
+    readCount,
+    totalCount,
+    filteredCount,
+    loading,
+    error,
+    refresh,
+    markRead,
+    markUnread,
+    markAllRead,
+    remove,
+    removeAll,
+  } = useNotifications();
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [notificationFilter, setNotificationFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const [actionError, setActionError] = useState('');
 
-  const readCount = notifications.filter((notification) => Number(notification.is_read)).length;
-  const visibleNotifications = notifications.filter((notification) => {
-    if (notificationFilter === 'unread') return !Number(notification.is_read);
-    if (notificationFilter === 'read') return Number(notification.is_read);
-    return true;
-  });
+  useEffect(() => {
+    refresh({ filter: notificationFilter, page, limit: PAGE_SIZE });
+  }, [notificationFilter, page, refresh]);
+
+  const pageCount = Math.max(1, Math.ceil(filteredCount / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
 
   const handleDelete = async (id) => {
     if (!window.confirm(t('notifications.deleteConfirm'))) return;
     try {
+      setActionError('');
       await remove(id);
     } catch (err) {
-      window.alert(err.message || t('common.error'));
+      setActionError(err.message || t('common.error'));
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (!window.confirm(t('notifications.deleteAllConfirm'))) return;
+    try {
+      setActionError('');
+      await removeAll(notificationFilter);
+    } catch (err) {
+      setActionError(err.message || t('common.error'));
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      setActionError('');
+      await markAllRead();
+    } catch (err) {
+      setActionError(err.message || t('common.error'));
+    }
+  };
+
+  const handleToggleRead = async (notification) => {
+    try {
+      setActionError('');
+      if (Number(notification.is_read)) {
+        await markUnread(notification.id);
+      } else {
+        await markRead(notification.id);
+      }
+    } catch (err) {
+      setActionError(err.message || t('common.error'));
     }
   };
 
   const openNotification = async (notification) => {
     if (!Number(notification.is_read)) {
-      await markRead(notification.id);
+      try {
+        await markRead(notification.id);
+      } catch (err) {
+        setActionError(err.message || t('common.error'));
+      }
     }
     setSelectedNotification(notification);
   };
@@ -47,13 +106,48 @@ export default function Notifications() {
   return (
     <DashboardLayout>
       <div className="max-w-6xl">
-        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between"><div className="flex w-fit rounded-full border border-[#e7dfd2] bg-white p-1">{[['all', 'All', notifications.length], ['unread', 'Unread', unreadCount], ['read', 'Read', readCount]].map(([value, label, count]) => <button key={value} type="button" onClick={() => setNotificationFilter(value)} className={`rounded-full px-4 py-2 text-xs font-semibold transition ${notificationFilter === value ? 'bg-[#f5ead5] text-[#a6813f] shadow-sm' : 'text-[#7a7d7f] hover:bg-[#faf5e9]'}`}>{label} <span className="ml-1 rounded-full bg-[#f1e7d3] px-1.5 py-0.5 text-[10px] text-[#775b25]">{count}</span></button>)}</div>{unreadCount > 0 && <button type="button" onClick={markAllRead} className="w-fit rounded-full border border-[#b18a45] bg-[#b18a45] px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-[#967338]">{t('common.markAllRead')}</button>}</div>
+        <div className="mb-5 flex flex-col gap-3 rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex w-fit flex-wrap rounded-full border border-[#e7dfd2] bg-white p-1">
+            {[
+              ['all', 'All', totalCount],
+              ['unread', 'Unread', unreadCount],
+              ['read', 'Read', readCount],
+            ].map(([value, label, count]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => { setNotificationFilter(value); setPage(1); }}
+                className={`rounded-full px-4 py-2 text-xs font-semibold transition ${notificationFilter === value ? 'bg-[#f5ead5] text-[#a6813f] shadow-sm' : 'text-[#7a7d7f] hover:bg-[#faf5e9]'}`}
+              >
+                {label} <span className="ml-1 rounded-full bg-[#f1e7d3] px-1.5 py-0.5 text-[10px] text-[#775b25]">{count}</span>
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {unreadCount > 0 && (
+              <button type="button" onClick={handleMarkAllRead} className="w-fit rounded-full border border-[#b18a45] bg-[#b18a45] px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-[#967338]">
+                {t('common.markAllRead')}
+              </button>
+            )}
+            {filteredCount > 0 && (
+              <button type="button" onClick={handleDeleteAll} className="w-fit rounded-full border border-red-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-red-600 transition hover:bg-red-50">
+                {t('notifications.deleteAll')}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {(error || actionError) && (
+          <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {actionError || error}
+          </div>
+        )}
 
         {loading && notifications.length === 0 ? (
           <div className="rounded-[26px] border border-[#efe7db] bg-white p-8 shadow-[0_18px_35px_rgba(15,31,45,0.04)]">
             <LoadingSpinner />
           </div>
-        ) : visibleNotifications.length === 0 ? (
+        ) : notifications.length === 0 ? (
           <div className="rounded-[26px] border border-dashed border-[#d9d0c2] bg-[#fdfbf8] px-6 py-14 text-center shadow-[0_18px_35px_rgba(15,31,45,0.04)]">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#f1e7d3] text-2xl">🔔</div>
             <p className="mt-5 text-lg font-semibold text-[#0f2337]">{t('notifications.empty')}</p>
@@ -61,7 +155,7 @@ export default function Notifications() {
           </div>
         ) : (
           <ul className="space-y-4">
-            {visibleNotifications.map((n) => (
+            {notifications.map((n) => (
               <li
                 key={n.id}
                   className={`group relative overflow-hidden rounded-xl border bg-[#fffdf8] p-3 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md sm:p-4 ${
@@ -94,10 +188,10 @@ export default function Notifications() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => markRead(n.id)}
+                      onClick={() => handleToggleRead(n)}
                       className="rounded-lg border border-[#d7b57a] bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#a6813f] transition hover:bg-[#f5ead5]"
                     >
-                      {t('common.markRead')}
+                      {Number(n.is_read) ? t('notifications.markUnread') : t('common.markRead')}
                     </button>
                     <button
                       type="button"
@@ -112,6 +206,19 @@ export default function Notifications() {
               </li>
             ))}
           </ul>
+        )}
+
+        {!loading && filteredCount > 0 && (
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-[#6e7274]">
+              Showing {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, filteredCount)} of {filteredCount} notifications
+            </p>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setPage(currentPage - 1)} disabled={currentPage === 1} className="rounded-lg border border-[#e7dfd2] bg-white px-4 py-2 text-sm font-medium text-[#58616a] transition hover:bg-[#faf5e9] disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
+              <span className="text-sm text-[#6e7274]">Page {currentPage} of {pageCount}</span>
+              <button type="button" onClick={() => setPage(currentPage + 1)} disabled={currentPage === pageCount} className="rounded-lg border border-[#e7dfd2] bg-white px-4 py-2 text-sm font-medium text-[#58616a] transition hover:bg-[#faf5e9] disabled:cursor-not-allowed disabled:opacity-50">Next</button>
+            </div>
+          </div>
         )}
       </div>
 

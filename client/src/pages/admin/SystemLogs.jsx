@@ -5,7 +5,7 @@ import { getSystemLogs } from '../../services/api';
 const modules = ['Authentication', 'Registration', 'Reservation', 'Appointment', 'Records', 'Documents', 'Users', 'Notifications', 'SMS', 'System'];
 
 function StatusBadge({ status }) {
-  return <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${status === 'Success' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{status}</span>;
+  return <span className={`inline-flex rounded-full px-1 py-1 text-[9px] font-semibold sm:text-[10px] ${status === 'Success' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{status}</span>;
 }
 
 export default function SystemLogs() {
@@ -32,7 +32,7 @@ export default function SystemLogs() {
 
   return (
     <DashboardLayout>
-      <div className="mb-5 grid gap-3 rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-4 shadow-sm sm:grid-cols-2 xl:grid-cols-6">
+      <div className="mb-5 grid gap-3 rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-4 shadow-sm sm:grid-cols-2 xl:grid-cols-7">
         <input value={filters.search} onChange={(event) => updateFilter('search', event.target.value)} placeholder="Search logs..." className="rounded-full border border-[#e7dfd2] bg-white px-4 py-2.5 text-xs outline-none focus:border-[#b18a45] xl:col-span-2" />
         <select value={filters.module} onChange={(event) => updateFilter('module', event.target.value)} className="rounded-full border border-[#e7dfd2] bg-white px-4 py-2.5 text-xs"><option value="">All Modules</option>{modules.map((item) => <option key={item}>{item}</option>)}</select>
         <select value={filters.role} onChange={(event) => updateFilter('role', event.target.value)} className="rounded-full border border-[#e7dfd2] bg-white px-4 py-2.5 text-xs"><option value="">All Roles</option><option value="admin">Admin</option><option value="user">Parishioner</option></select>
@@ -43,7 +43,34 @@ export default function SystemLogs() {
 
       {error && <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
       <div className="overflow-hidden rounded-xl border border-[#e7dfd2] bg-[#fffdf8] shadow-sm">
-        <div className="overflow-x-auto"><table className="w-full min-w-[1050px] text-sm"><thead className="bg-[#f8f4ec]"><tr className="border-b border-[#e7dfd2] text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-[#7a7d7f]"><th className="px-5 py-3">Date &amp; Time</th><th className="px-5 py-3">User</th><th className="px-5 py-3">Role</th><th className="px-5 py-3">Action</th><th className="px-5 py-3">Module</th><th className="px-5 py-3">Description</th><th className="px-5 py-3">Status</th></tr></thead><tbody>{loading ? <tr><td colSpan="7" className="px-5 py-10 text-center text-sm text-slate-500">Loading system logs...</td></tr> : logs.map((log) => <tr key={log.id} onClick={() => setSelected(log)} className="cursor-pointer border-b border-[#eee7db] transition hover:bg-[#faf5e9]"><td className="whitespace-nowrap px-5 py-4 text-[#7a7d7f]">{new Date(log.created_at).toLocaleString()}</td><td className="px-5 py-4 font-medium text-[#273746]">{log.user_name || 'System'}</td><td className="px-5 py-4 text-[#58616a]">{log.user_role === 'admin' ? 'Admin' : log.user_role === 'user' ? 'Parishioner' : '-'}</td><td className="px-5 py-4 font-medium text-[#273746]">{log.action}</td><td className="px-5 py-4 text-[#58616a]">{log.module}</td><td className="max-w-sm px-5 py-4 text-[#58616a]"><span className="block truncate" title={log.description}>{log.description}</span></td><td className="px-5 py-4"><StatusBadge status={log.status} /></td></tr>)}</tbody></table></div>
+        <table className="w-full table-fixed text-[9px] sm:text-[10px]">
+          <thead className="bg-[#f8f4ec]">
+            <tr className="border-b border-[#e7dfd2] text-left text-[9px] font-semibold uppercase tracking-wide text-[#7a7d7f] sm:text-[10px]">
+              <th className="w-[16%] px-1 py-3 sm:px-2">Date &amp; Time</th>
+              <th className="w-[14%] px-1 py-3 sm:px-2">User</th>
+              <th className="w-[10%] px-1 py-3 sm:px-2">Role</th>
+              <th className="w-[14%] px-1 py-3 sm:px-2">Action</th>
+              <th className="w-[10%] px-1 py-3 sm:px-2">Module</th>
+              <th className="w-[23%] px-1 py-3 sm:px-2">Description</th>
+              <th className="w-[13%] px-1 py-3 sm:px-2">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan="7" className="px-2 py-10 text-center text-[10px] text-slate-500">Loading system logs...</td></tr>
+            ) : logs.map((log) => (
+              <tr key={log.id} onClick={() => setSelected(log)} className="cursor-pointer border-b border-[#eee7db] transition hover:bg-[#faf5e9]">
+                <td className="break-words px-1 py-3 text-[#7a7d7f] sm:px-2">{new Date(log.created_at).toLocaleString()}</td>
+                <td className="break-words px-1 py-3 font-medium text-[#273746] sm:px-2">{log.user_name || 'System'}</td>
+                <td className="break-all px-1 py-3 text-[#58616a] sm:px-2">{log.user_role === 'admin' ? 'Admin' : log.user_role === 'user' ? 'Parishioner' : '-'}</td>
+                <td className="break-all px-1 py-3 font-medium text-[#273746] sm:px-2">{log.action}</td>
+                <td className="break-all px-1 py-3 text-[#58616a] sm:px-2">{log.module}</td>
+                <td className="break-words px-1 py-3 text-[#58616a] sm:px-2"><span title={log.description}>{log.description}</span></td>
+                <td className="px-1 py-3 sm:px-2"><StatusBadge status={log.status} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
         {!loading && logs.length === 0 && <p className="px-5 py-8 text-sm text-slate-500">No system logs found.</p>}
       </div>
       {pagination.pages > 1 && <div className="mt-5 flex items-center justify-center gap-4"><button disabled={pagination.page === 1} onClick={() => setPagination((current) => ({ ...current, page: current.page - 1 }))} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm disabled:opacity-50">Previous</button><span className="text-sm text-slate-600">Page {pagination.page} of {pagination.pages}</span><button disabled={pagination.page === pagination.pages} onClick={() => setPagination((current) => ({ ...current, page: current.page + 1 }))} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm disabled:opacity-50">Next</button></div>}

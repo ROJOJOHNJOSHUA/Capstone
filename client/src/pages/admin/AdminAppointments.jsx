@@ -13,6 +13,7 @@ const APPOINTMENT_STATUS_STYLES = {
   Rejected: 'bg-red-100 text-red-700',
   Cancelled: 'bg-[#efede8] text-[#69665d]',
 };
+const ITEMS_PER_PAGE = 10;
 
 function AppointmentStatusBadge({ status }) {
   const label = status === 'Pending' ? 'Under Review' : status;
@@ -23,6 +24,7 @@ export default function AdminAppointments() {
   const [items, setItems] = useState([]);
   const [filter, setFilter] = useState('Pending');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [remarks, setRemarks] = useState({});
   const [showRemarks, setShowRemarks] = useState({});
   const [loading, setLoading] = useState(true);
@@ -105,6 +107,12 @@ export default function AdminAppointments() {
           .join(' ');
         return haystack.includes(searchQuery);
     });
+  const pageCount = Math.max(1, Math.ceil(filteredAppointments.length / ITEMS_PER_PAGE));
+  const currentPage = Math.min(page, pageCount);
+  const paginatedAppointments = filteredAppointments.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   const resolveRemarks = (id) => {
     if (Object.prototype.hasOwnProperty.call(remarks, id)) {
@@ -212,7 +220,7 @@ export default function AdminAppointments() {
       <div className="mb-5 grid gap-4 rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-4 shadow-sm sm:grid-cols-[minmax(12rem,0.8fr)_minmax(16rem,1.2fr)] sm:items-end">
         <div>
           <label htmlFor="appointment-status-filter" className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">Filter status</label>
-          <select id="appointment-status-filter" className="h-11 w-full rounded-md border border-[#e7dfd2] bg-white px-4 text-sm text-[#58616a] outline-none focus:border-[#b18a45] focus:ring-2 focus:ring-[#d7b57a]/20" value={filter} onChange={(e) => setFilter(e.target.value)}>
+          <select id="appointment-status-filter" className="h-11 w-full rounded-md border border-[#e7dfd2] bg-white px-4 text-sm text-[#58616a] outline-none focus:border-[#b18a45] focus:ring-2 focus:ring-[#d7b57a]/20" value={filter} onChange={(e) => { setFilter(e.target.value); setPage(1); }}>
             <option value="All">All Status</option>
             {APPOINTMENT_STATUSES.filter((status) => status !== 'Under Review').map((s) => (
               <option key={s} value={s}>
@@ -229,7 +237,7 @@ export default function AdminAppointments() {
               id="appointment-search"
               type="search"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => { setSearch(event.target.value); setPage(1); }}
               placeholder="Name, email, phone, purpose, or date"
               className="h-11 w-full rounded-md border border-[#e7dfd2] bg-white pl-10 pr-4 text-sm text-[#1f3342] outline-none placeholder:text-[#92999d] focus:border-[#b18a45] focus:ring-2 focus:ring-[#d7b57a]/20"
             />
@@ -253,7 +261,7 @@ export default function AdminAppointments() {
                 </tr>
               </thead>
               <tbody>
-                {filteredAppointments.map((a) => (
+                {paginatedAppointments.map((a) => (
                   <tr key={a.id} className="border-b border-[#eee9df] align-top transition hover:bg-[#fbfaf7]">
                     <td className="px-5 py-4">
                       <div className="font-semibold text-[#1f3342]">{a.fullname}</div>
@@ -314,6 +322,18 @@ export default function AdminAppointments() {
           <p className="px-5 py-6 text-sm text-[#6e7274]">No appointments found.</p>
         )}
       </div>
+      {!loading && filteredAppointments.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-[#6e7274]">
+            Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredAppointments.length)} of {filteredAppointments.length} appointments
+          </p>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setPage(currentPage - 1)} disabled={currentPage === 1} className="rounded-lg border border-[#e7dfd2] bg-white px-4 py-2 text-sm font-medium text-[#58616a] transition hover:bg-[#faf5e9] disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
+            <span className="text-sm text-[#6e7274]">Page {currentPage} of {pageCount}</span>
+            <button type="button" onClick={() => setPage(currentPage + 1)} disabled={currentPage === pageCount} className="rounded-lg border border-[#e7dfd2] bg-white px-4 py-2 text-sm font-medium text-[#58616a] transition hover:bg-[#faf5e9] disabled:cursor-not-allowed disabled:opacity-50">Next</button>
+          </div>
+        </div>
+      )}
 
       {activeMenu && createPortal(
         <div

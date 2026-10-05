@@ -247,38 +247,38 @@ export default function AdminUsers() {
         <LoadingSpinner />
       ) : (
         <>
-          <div className="max-h-[min(68vh,760px)] min-h-[280px] overflow-auto rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-0 shadow-sm">
+          <div className="max-h-[min(68vh,760px)] min-h-[280px] overflow-x-hidden overflow-y-auto rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-0 shadow-sm">
             <div>
-              <table className="w-full min-w-[900px] text-sm">
+              <table className="w-full table-fixed text-[10px] sm:text-xs">
                 <thead className="sticky top-0 z-10 bg-[#f8f4ec]">
-                  <tr className="border-b border-[#e7dfd2] text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">
-                    <th className="px-5 py-3">{t('profile.fullName')}</th>
-                    <th className="px-5 py-3">{t('profile.email')}</th>
-                    <th className="px-5 py-3">{t('profile.phone')}</th>
-                    <th className="px-5 py-3">{t('profile.role')}</th>
-                    <th className="px-5 py-3">{t('profile.memberSince')}</th>
-                    <th className="px-5 py-3 text-right">{t('common.actions')}</th>
+                  <tr className="border-b border-[#e7dfd2] text-left text-[9px] font-semibold uppercase tracking-wide text-[#7a7d7f] sm:text-[10px]">
+                    <th className="w-[22%] px-1.5 py-3 sm:px-2.5">{t('profile.fullName')}</th>
+                    <th className="w-[25%] px-1.5 py-3 sm:px-2.5">{t('profile.email')}</th>
+                    <th className="w-[15%] px-1.5 py-3 sm:px-2.5">{t('profile.phone')}</th>
+                    <th className="w-[12%] px-1.5 py-3 sm:px-2.5">{t('profile.role')}</th>
+                    <th className="w-[16%] px-1.5 py-3 sm:px-2.5">{t('profile.memberSince')}</th>
+                    <th className="w-[10%] px-1.5 py-3 text-right sm:px-2.5">{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {visibleUsers.map((user) => (
                     <tr key={user.id} className="border-b border-[#eee7db] transition hover:bg-[#faf5e9]">
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 min-w-[2.5rem] items-center justify-center rounded-full bg-[#14212b] text-xs font-bold text-white shadow-sm ring-2 ring-white">
+                      <td className="px-1.5 py-3 sm:px-2.5">
+                        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+                          <div className="flex h-7 w-7 min-w-[1.75rem] items-center justify-center rounded-full bg-[#14212b] text-[10px] font-bold text-white shadow-sm ring-2 ring-white sm:h-8 sm:w-8 sm:min-w-[2rem]">
                             {user.fullname?.charAt(0)?.toUpperCase() || 'U'}
                           </div>
                           <div className="min-w-0">
-                            <div className="truncate font-medium text-[#273746]">{user.fullname}</div>
-                            <div className="text-xs text-[#7a7d7f]">ID #{user.id}</div>
+                            <div className="break-words font-medium text-[#273746]">{user.fullname}</div>
+                            <div className="break-all text-[9px] text-[#7a7d7f] sm:text-[10px]">ID #{user.id}</div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-5 py-4 text-[#58616a]">{user.email}</td>
-                      <td className="px-5 py-4 text-[#58616a]">{user.phone}</td>
-                      <td className="px-5 py-4">
+                      <td className="break-all px-1.5 py-3 text-[#58616a] sm:px-2.5">{user.email}</td>
+                      <td className="break-all px-1.5 py-3 text-[#58616a] sm:px-2.5">{user.phone}</td>
+                      <td className="px-1.5 py-3 sm:px-2.5">
                         <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          className={`inline-flex items-center rounded-full px-1.5 py-1 text-[9px] font-semibold sm:text-[10px] ${
                             user.role === 'admin'
                               ? 'bg-[#0f2337]/10 text-[#0f2337]'
                               : 'bg-emerald-100 text-emerald-700'
@@ -287,14 +287,14 @@ export default function AdminUsers() {
                           {roleLabel(user.role)}
                         </span>
                       </td>
-                      <td className="px-5 py-4 text-slate-500">{user.created_at?.slice(0, 10)}</td>
-                      <td className="px-5 py-4">
+                      <td className="break-all px-1.5 py-3 text-slate-500 sm:px-2.5">{user.created_at?.slice(0, 10)}</td>
+                      <td className="px-1.5 py-3 sm:px-2.5">
                         <div className="flex justify-end">
                           <button
                             type="button"
                             aria-label={`${t('common.actions')} for ${user.fullname}`}
                             aria-expanded={activeMenu?.id === user.id}
-                            className="rounded-md p-2 text-[#7a7d7f] transition hover:bg-[#f1e7d1] hover:text-[#8a6b34]"
+                            className="rounded-md p-1 text-[#7a7d7f] transition hover:bg-[#f1e7d1] hover:text-[#8a6b34]"
                             onClick={(event) => toggleActionMenu(event, user)}
                           >
                             <SquarePen className="h-4 w-4" />

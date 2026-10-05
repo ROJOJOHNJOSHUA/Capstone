@@ -115,25 +115,22 @@ export default function SMSLogs() {
 
       <div className="mb-5 flex flex-col gap-3 rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-3 shadow-sm lg:flex-row lg:items-end">
         <div className="flex-1">
-          <div className="flex-1">
-            <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">Search</label>
-            <input
-              type="text"
-              placeholder="Search by phone, name, or email..."
-              className="w-full rounded-full border border-[#e7dfd2] bg-white px-4 py-2.5 text-xs text-[#58616a] outline-none focus:border-[#b18a45] focus:ring-2 focus:ring-[#d7b57a]/20"
-              value={search}
-              onChange={handleSearch}
-            />
-          </div>
-
-          <div className="lg:w-56 mt-3">
-            <select className="w-full rounded-full border border-[#e7dfd2] bg-white px-4 py-2.5 text-xs text-[#58616a]" value={filter} onChange={handleFilterChange}>
-              <option value="All">All Status</option>
-              <option value="sent">Sent</option>
-              <option value="failed">Failed</option>
-              <option value="pending">Pending</option>
-            </select>
-          </div>
+          <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">Search</label>
+          <input
+            type="text"
+            placeholder="Search by phone, name, or email..."
+            className="w-full rounded-full border border-[#e7dfd2] bg-white px-4 py-2.5 text-xs text-[#58616a] outline-none focus:border-[#b18a45] focus:ring-2 focus:ring-[#d7b57a]/20"
+            value={search}
+            onChange={handleSearch}
+          />
+        </div>
+        <div className="lg:w-56">
+          <select className="w-full rounded-full border border-[#e7dfd2] bg-white px-4 py-2.5 text-xs text-[#58616a]" value={filter} onChange={handleFilterChange}>
+            <option value="All">All Status</option>
+            <option value="sent">Sent</option>
+            <option value="failed">Failed</option>
+            <option value="pending">Pending</option>
+          </select>
         </div>
       </div>
 
@@ -150,34 +147,34 @@ export default function SMSLogs() {
       ) : (
         <>
           <div className="overflow-hidden rounded-xl border border-[#e7dfd2] bg-[#fffdf8] p-0 shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] text-sm">
+            <div>
+              <table className="w-full table-fixed text-[10px] sm:text-xs">
                 <thead className="bg-[#f8f4ec]">
-                  <tr className="border-b border-[#e7dfd2] text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7a7d7f]">
-                    <th className="px-5 py-3">User</th>
-                    <th className="px-5 py-3">Phone</th>
-                    <th className="px-5 py-3">Message</th>
-                    <th className="px-5 py-3">Status</th>
-                    <th className="px-5 py-3">Date</th>
+                  <tr className="border-b border-[#e7dfd2] text-left text-[9px] font-semibold uppercase tracking-wide text-[#7a7d7f] sm:text-[10px]">
+                    <th className="w-[21%] px-1.5 py-3 sm:px-2.5">User</th>
+                    <th className="w-[17%] px-1.5 py-3 sm:px-2.5">Phone</th>
+                    <th className="w-[30%] px-1.5 py-3 sm:px-2.5">Message</th>
+                    <th className="w-[14%] px-1.5 py-3 sm:px-2.5">Status</th>
+                    <th className="w-[18%] px-1.5 py-3 sm:px-2.5">Date</th>
                   </tr>
                 </thead>
                 <tbody>
                   {logs.map((log) => (
                     <tr key={log.id} className="border-b border-[#eee7db] transition hover:bg-[#faf5e9]">
-                      <td className="px-5 py-4">
+                      <td className="break-words px-1.5 py-3 sm:px-2.5">
                         <div className="font-medium text-[#273746]">{log.fullname}</div>
-                        <div className="text-xs text-[#7a7d7f]">{log.email}</div>
+                        <div className="break-all text-[9px] text-[#7a7d7f] sm:text-[10px]">{log.email}</div>
                       </td>
-                      <td className="px-5 py-4 text-[#58616a]">{log.phone_number}</td>
-                      <td className="max-w-md px-5 py-4 text-[#58616a]">
+                      <td className="break-all px-1.5 py-3 text-[#58616a] sm:px-2.5">{log.phone_number}</td>
+                      <td className="px-1.5 py-3 text-[#58616a] sm:px-2.5">
                         <span className="block truncate" title={log.message}>{log.message}</span>
                       </td>
-                      <td className="px-5 py-4">
-                        <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${getStatusColor(log.status)}`}>
+                      <td className="px-1.5 py-3 sm:px-2.5">
+                        <span className={`inline-flex rounded-full px-1 py-1 text-[9px] font-semibold sm:text-[10px] ${getStatusColor(log.status)}`}>
                           {log.status}
                         </span>
                       </td>
-                      <td className="px-5 py-4 text-[#7a7d7f]">
+                      <td className="break-words px-1.5 py-3 text-[#7a7d7f] sm:px-2.5">
                         {new Date(log.created_at).toLocaleString()}
                       </td>
                     </tr>
