@@ -2,7 +2,7 @@
 
 ## Overview
 
-Phase 3 implements the backend upload service for Reservation Documents. This phase provides secure upload, download, listing, and deletion functionality without modifying the frontend.
+Phase 3 implements the backend upload service for Reservation Documents. This phase provides secure upload, download, listing, and deletion functionality.
 
 ---
 
@@ -28,8 +28,13 @@ server/
         └── [reservation_id]/      # Created dynamically
             ├── birth_certificate.pdf
             ├── valid_id.jpg
+            ├── reservation_details.pdf
             └── ...
 ```
+
+Each reservation also has one generated `Reservation Details.pdf` containing the parishioner profile, reservation information, and submitted details. Requirement uploads remain separate files and keep their uploaded formats (PDF, JPG/JPEG, or PNG). Existing reservations receive or refresh their PDF the first time an administrator opens them in Records.
+
+In the administrator's parishioner record folder, PDF and image files have a three-dot menu for download, rename, and delete. Renaming preserves the file extension. Deleting the generated reservation-details PDF is remembered so it is not recreated automatically.
 
 ---
 

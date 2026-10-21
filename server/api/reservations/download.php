@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../utils/response.php';
 require_once __DIR__ . '/../../middleware/auth.php';
 require_once __DIR__ . '/../../utils/documents.php';
 require_once __DIR__ . '/../../utils/upload.php';
+require_once __DIR__ . '/../../utils/reservation_details_pdf.php';
 
 $auth = requireAuth();
 $db = getDB();
@@ -38,10 +39,17 @@ $document = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$document) {
     errorResponse('Document not found.', 404);
 }
+if ($document['document_type'] === 'reservation_details_deleted') {
+    errorResponse('Document not found.', 404);
+}
 
 // Verify ownership or admin access
 if (!$isAdmin && (int) $document['reservation_user_id'] !== $userId) {
     errorResponse('You do not have permission to download this document.', 403);
+}
+
+if ($document['document_type'] === 'reservation_details') {
+    ensureReservationDetailsPdf($db, (int) $document['reservation_id'], $baseUploadDir);
 }
 
 // Get absolute file path
@@ -73,7 +81,7 @@ header_remove('Content-Type');
 header('Content-Type: ' . $document['mime_type']);
 header('Content-Disposition: ' . $disposition . '; filename="' . $safeFilename . '"');
 header('Content-Length: ' . filesize($absolutePath));
-header('Cache-Control: private, no-cache, must-revalidate');
+header('Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: 0');
 

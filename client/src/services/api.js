@@ -140,6 +140,8 @@ export const uploadReservationDocument = (formData) =>
   });
 export const updateReservationDocument = (data) =>
   api.patch('/reservations/documents.php', data);
+export const renameReservationDocument = (data) =>
+  api.patch('/reservations/documents.php', { ...data, action: 'rename' });
 export const deleteReservationDocument = (documentId) =>
   api.delete(`/reservations/documents.php?id=${documentId}`);
 export const downloadReservationDocument = (documentId) =>
@@ -207,6 +209,7 @@ export async function fetchReservationDocument(documentId, options = {}) {
 
   const response = await fetch(`${API_BASE}/reservations/download.php?${params}`, {
     credentials: 'include',
+    cache: 'no-store',
   });
 
   if (!response.ok) {

@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../config/init.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../utils/response.php';
 require_once __DIR__ . '/../../utils/upload.php';
+require_once __DIR__ . '/../../utils/reservation_details_pdf.php';
 require_once __DIR__ . '/../../middleware/auth.php';
 require_once __DIR__ . '/../../utils/system_logs.php';
 
@@ -136,12 +137,14 @@ function getReservationRecordDetail(PDO $db, int $reservationId): array
     if (!$reservation) {
         errorResponse('Reservation record not found.', 404);
     }
+    ensureReservationDetailsPdf($db, $reservationId, __DIR__ . '/../../uploads');
 
     $docStmt = $db->prepare(
         'SELECT rd.*, r.service_type, r.reservation_date
          FROM reservation_documents rd
          INNER JOIN reservations r ON rd.reservation_id = r.id
          WHERE rd.reservation_id = ?
+           AND rd.document_type <> \'reservation_details_deleted\'
          ORDER BY rd.uploaded_at DESC'
     );
     $docStmt->execute([$reservationId]);
@@ -227,6 +230,7 @@ function getParishionerRecordList(PDO $db, string $q, string $service, string $s
                 FROM reservation_documents rd
                 INNER JOIN reservations r ON rd.reservation_id = r.id
                 WHERE r.user_id = u.id
+                  AND rd.document_type <> 'reservation_details_deleted'
             ) AS file_count,
             (
                 SELECT COUNT(*)
@@ -477,6 +481,7 @@ function getParishionerRecordDetail(PDO $db, int $userId): array
              FROM reservation_documents rd
              INNER JOIN reservations r ON rd.reservation_id = r.id
              WHERE rd.reservation_id IN ($placeholders)
+               AND rd.document_type <> 'reservation_details_deleted'
              ORDER BY rd.uploaded_at DESC"
         );
         $docStmt->execute($reservationIds);
@@ -559,7 +564,7 @@ function deleteReservationRecord(PDO $db, int $reservationId): void
         errorResponse('Parishioner record not found.', 404);
     }
 
-    $docStmt = $db->prepare('SELECT file_path FROM reservation_documents WHERE reservation_id = ?');
+    $docStmt = $db->prepare("SELECT file_path FROM reservation_documents WHERE reservation_id = ? AND file_path <> ''");
     $docStmt->execute([$reservationId]);
     $filePaths = array_column($docStmt->fetchAll(PDO::FETCH_ASSOC), 'file_path');
 

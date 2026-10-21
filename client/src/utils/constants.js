@@ -94,7 +94,7 @@ export const SERVICE_SCHEDULE = {
 };
 
 export const SERVICE_REQUIREMENTS = {
-  Marriage: 'Marriage License, CENOMAR, Baptismal Certificate, Confirmation Certificate, Marriage Certificate of Sponsor, Pre-Cana Seminar Certificate',
+  Marriage: 'CENOMAR, Baptismal Certificate, Confirmation Certificate, Marriage Certificate of Sponsor, Pre-Cana Seminar Certificate',
   Funeral: 'Death Certificate, Burial Permit, Endorsement Form, and any cemetery/niche form required by the service choice',
   Baptism: 'Birth Certificate, Baptismal Certificate of Sponsor, and Permit of Home Church (optional only if not a resident of Putiao, Pilar)',
   'Mass Intention': 'Payment receipt / proof of payment',

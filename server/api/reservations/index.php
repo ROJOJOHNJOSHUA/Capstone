@@ -10,6 +10,7 @@ require_once __DIR__ . '/../../utils/notifications.php';
 require_once __DIR__ . '/../../utils/sms.php';
 require_once __DIR__ . '/../../utils/documents.php';
 require_once __DIR__ . '/../../utils/upload.php';
+require_once __DIR__ . '/../../utils/reservation_details_pdf.php';
 require_once __DIR__ . '/../../utils/system_logs.php';
 require_once __DIR__ . '/../../utils/records.php';
 
@@ -314,6 +315,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'Pending',
             ]);
         }
+        ensureReservationDetailsPdf($db, $newId, __DIR__ . '/../../uploads');
         $db->commit();
         if ($lockAcquired) $db->query('SELECT RELEASE_LOCK(' . $db->quote($lockName) . ')');
     } catch (DomainException $e) {

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  ChevronLeft,
   ChevronRight,
   Download,
   Eye,
@@ -9,12 +8,12 @@ import {
   Folder,
   FolderPlus,
   MoreVertical,
+  Pencil,
   Search,
   Trash2,
   UploadCloud,
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
-import StatusBadge from '../../components/cards/StatusBadge';
 import LoadingSpinner from '../../components/forms/LoadingSpinner';
 import Modal from '../../components/forms/Modal';
 import ImagePreviewModal from '../../components/forms/ImagePreviewModal';
@@ -34,6 +33,8 @@ import {
   getRecordFolders,
   getReservationRecordDetail,
   getUnlinkedRecordDetail,
+  renameReservationDocument,
+  deleteReservationDocument,
   uploadRecordFile,
   uploadReservationDocument,
 } from '../../services/api';
@@ -43,11 +44,6 @@ const PAGE_SIZE = 10;
 function formatDate(value) {
   if (!value) return '—';
   return String(value).slice(0, 10);
-}
-
-function formatTime(value) {
-  if (!value) return '—';
-  return String(value).slice(0, 5);
 }
 
 function formatModified(value) {
@@ -79,92 +75,6 @@ function recordFolderParams(context) {
   return { parent_type: 'root' };
 }
 
-function DetailField({ label, value, className = '' }) {
-  return (
-    <div className={className}>
-      <dt className="mb-1 text-xs font-medium uppercase text-gray-500">{label}</dt>
-      <dd className="break-words text-sm text-gray-800">{value || '—'}</dd>
-    </div>
-  );
-}
-
-function decodeRequirementText(value) {
-  return String(value || '')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#0*39;|&apos;/g, "'");
-}
-
-function formatDetailLabel(value) {
-  const label = decodeRequirementText(value)
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/[_-]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  const aliases = {
-    fullname: 'Full Name',
-    bridefullname: 'Bride Full Name',
-    groomfullname: 'Groom Full Name',
-  };
-  return aliases[label.toLowerCase().replace(/[^a-z0-9]/g, '')]
-    || label.replace(/\b\w/g, (character) => character.toUpperCase());
-}
-
-function getSubmittedDetailFields(reservation) {
-  const fields = [];
-  const seen = new Set();
-  const addField = (label, value) => {
-    const text = decodeRequirementText(value).trim();
-    if (!text) return;
-    const formattedLabel = formatDetailLabel(label);
-    const key = `${formattedLabel.toLowerCase().replace(/[^a-z0-9]/g, '')}:${text.toLowerCase()}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-    fields.push({ label: formattedLabel, value: text });
-  };
-
-  let serviceDetails = reservation.service_details;
-  if (typeof serviceDetails === 'string') {
-    try {
-      serviceDetails = JSON.parse(serviceDetails);
-    } catch {
-      serviceDetails = null;
-    }
-  }
-  if (serviceDetails && typeof serviceDetails === 'object' && !Array.isArray(serviceDetails)) {
-    Object.entries(serviceDetails).forEach(([label, value]) => {
-      if (value !== null && typeof value === 'object') {
-        addField(label, Array.isArray(value) ? value.join(', ') : JSON.stringify(value));
-      } else {
-        addField(label, value);
-      }
-    });
-  }
-
-  const requirements = decodeRequirementText(reservation.requirements).trim();
-  requirements.split(/\r?\n/).forEach((line) => {
-    const separator = line.indexOf(':');
-    if (separator > 0) addField(line.slice(0, separator), line.slice(separator + 1));
-  });
-
-  if (fields.length === 0 && requirements) {
-    addField('Requirements and Details', requirements);
-  }
-  const parishionerFields = new Set(['fullname', 'email', 'phone', 'contactnumber', 'address']);
-  return fields.filter((field) => !parishionerFields.has(field.label.toLowerCase().replace(/[^a-z0-9]/g, '')));
-}
-
-function DetailSection({ title, children }) {
-  return (
-    <section>
-      <h3 className="mb-3 border-b border-gray-100 pb-2 text-sm font-semibold text-parish-blue">{title}</h3>
-      {children}
-    </section>
-  );
-}
-
 function ErrorState({ message, onRetry }) {
   return (
     <div className="px-4 py-12 text-center">
@@ -174,33 +84,29 @@ function ErrorState({ message, onRetry }) {
   );
 }
 
-function UploadedDocumentsSection({ documents, searchQuery = '' }) {
+function UploadedDocumentsSection({ documents, searchQuery = '', onDownload, onRename, onDelete }) {
   const documentRows = Array.isArray(documents) ? documents.filter((doc) => doc && typeof doc === 'object') : [];
   const blobUrlsRef = useRef([]);
   const [thumbnails, setThumbnails] = useState({});
-  const [thumbErrors, setThumbErrors] = useState({});
   const [previewDoc, setPreviewDoc] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
-  const [actionLoading, setActionLoading] = useState(null);
+  const previewBlobUrlRef = useRef(null);
   const [activeMenu, setActiveMenu] = useState(null);
-  const [page, setPage] = useState(1);
 
   const matchingDocuments = documentRows.filter((doc) => {
+    if (doc.mime_type !== 'application/pdf' && !String(doc.mime_type || '').startsWith('image/')) return false;
     const query = String(searchQuery || '').trim().toLowerCase();
     return !query || String(doc.original_filename || doc.document_name || '').toLowerCase().startsWith(query);
   });
-  const pageCount = Math.max(1, Math.ceil(matchingDocuments.length / PAGE_SIZE));
-  const pageDocuments = matchingDocuments.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const previewDocumentKey = pageDocuments.map((doc) => doc.id).join('|');
+  const previewDocumentKey = matchingDocuments.map((doc) => doc.id).join('|');
 
   useEffect(() => {
     let cancelled = false;
     blobUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
     blobUrlsRef.current = [];
     setThumbnails({});
-    setThumbErrors({});
 
-    pageDocuments.filter((doc) => String(doc.mime_type || '').startsWith('image/')).forEach(async (doc) => {
+    matchingDocuments.filter((doc) => String(doc.mime_type || '').startsWith('image/')).forEach(async (doc) => {
       try {
         const { blob } = await fetchReservationDocument(doc.id);
         if (cancelled) return;
@@ -208,7 +114,13 @@ function UploadedDocumentsSection({ documents, searchQuery = '' }) {
         blobUrlsRef.current.push(url);
         setThumbnails((previous) => ({ ...previous, [doc.id]: url }));
       } catch {
-        if (!cancelled) setThumbErrors((previous) => ({ ...previous, [doc.id]: true }));
+        if (!cancelled) {
+          setThumbnails((previous) => {
+            const next = { ...previous };
+            delete next[doc.id];
+            return next;
+          });
+        }
       }
     });
 
@@ -219,10 +131,38 @@ function UploadedDocumentsSection({ documents, searchQuery = '' }) {
     };
   }, [previewDocumentKey]);
 
-  useEffect(() => setPage(1), [searchQuery]);
+  useEffect(() => () => {
+    if (previewBlobUrlRef.current) URL.revokeObjectURL(previewBlobUrlRef.current);
+  }, []);
+
   useEffect(() => {
-    if (page > pageCount) setPage(pageCount);
-  }, [page, pageCount]);
+    if (!activeMenu) return undefined;
+    const closeMenu = () => setActiveMenu(null);
+    window.addEventListener('scroll', closeMenu, true);
+    window.addEventListener('resize', closeMenu);
+    return () => {
+      window.removeEventListener('scroll', closeMenu, true);
+      window.removeEventListener('resize', closeMenu);
+    };
+  }, [activeMenu]);
+
+  const toggleFileMenu = (event, doc) => {
+    event.stopPropagation();
+    if (activeMenu?.doc.id === doc.id) {
+      setActiveMenu(null);
+      return;
+    }
+    const rect = event.currentTarget.getBoundingClientRect();
+    const menuHeight = 120;
+    const menuWidth = 144;
+    const openAbove = rect.bottom + menuHeight > window.innerHeight - 8 && rect.top > menuHeight + 8;
+    const preferredTop = openAbove ? rect.top - menuHeight - 8 : rect.bottom + 8;
+    setActiveMenu({
+      doc,
+      top: Math.min(Math.max(8, preferredTop), Math.max(8, window.innerHeight - menuHeight - 8)),
+      right: Math.min(window.innerWidth - menuWidth - 8, Math.max(8, window.innerWidth - rect.right)),
+    });
+  };
 
   const openPreview = (doc) => {
     const url = thumbnails[doc.id];
@@ -232,34 +172,23 @@ function UploadedDocumentsSection({ documents, searchQuery = '' }) {
     }
   };
 
-  const downloadDocument = async (doc) => {
-    setActionLoading(`download-${doc.id}`);
-    setActiveMenu(null);
-    try {
-      const { blob } = await fetchReservationDocument(doc.id);
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = doc.original_filename || doc.document_name;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      window.alert(error.message || 'Failed to download file.');
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
   const viewDocument = async (doc) => {
     if (doc.mime_type?.startsWith('image/')) {
-      openPreview(doc);
-      setActiveMenu(null);
+      if (thumbnails[doc.id]) {
+        openPreview(doc);
+        return;
+      }
+      try {
+        const { blob } = await fetchReservationDocument(doc.id);
+        const url = URL.createObjectURL(blob);
+        previewBlobUrlRef.current = url;
+        setPreviewDoc(doc);
+        setPreviewUrl(url);
+      } catch (error) {
+        window.alert(error.message || 'Failed to open file.');
+      }
       return;
     }
-    setActionLoading(`view-${doc.id}`);
-    setActiveMenu(null);
     try {
       const { blob } = await fetchReservationDocument(doc.id);
       const url = URL.createObjectURL(blob);
@@ -267,130 +196,74 @@ function UploadedDocumentsSection({ documents, searchQuery = '' }) {
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (error) {
       window.alert(error.message || 'Failed to open file.');
-    } finally {
-      setActionLoading(null);
     }
   };
 
   return (
     <>
-      <DetailSection title="Reservation Requirement Documents">
-        {matchingDocuments.length ? (
-          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[680px] table-fixed text-left">
-                <colgroup>
-                  <col style={{ width: '42%' }} /><col style={{ width: '18%' }} /><col style={{ width: '23%' }} />
-                  <col style={{ width: '12%' }} /><col style={{ width: '5%' }} />
-                </colgroup>
-                <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
-                  <tr className="h-10 border-b border-slate-200">
-                    <th className="px-3">Name</th><th className="px-3">Type</th><th className="px-3">Modified</th><th className="px-3">Size</th>
-                    <th className="px-3 text-center"><MoreVertical className="mx-auto h-4 w-4" /></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-sm text-slate-600">
-                  {pageDocuments.map((doc) => {
-                    const image = doc.mime_type?.startsWith('image/');
-                    const pdf = doc.mime_type === 'application/pdf';
-                    const extension = String(doc.original_filename || '').split('.').pop()?.toLowerCase();
-                    const type = image ? 'Image' : pdf ? 'PDF Document' : `${(extension || 'file').toUpperCase()} Document`;
-                    return (
-                      <tr key={doc.id} className="h-[3.3rem] hover:bg-slate-50">
-                        <td className="overflow-hidden px-3">
-                          <div className="flex min-w-0 items-center gap-3">
-                            {image && thumbnails[doc.id] ? (
-                              <button type="button" className="h-8 w-8 shrink-0 overflow-hidden rounded border border-slate-200" onClick={() => openPreview(doc)} aria-label={`Preview ${doc.original_filename}`}>
-                                <img src={thumbnails[doc.id]} alt="" className="h-full w-full object-cover" />
-                              </button>
-                            ) : <FileText className={`h-7 w-7 shrink-0 ${pdf ? 'text-red-500' : image ? 'text-blue-500' : 'text-blue-600'}`} />}
-                            <div className="min-w-0">
-                              <p className="truncate font-medium text-slate-800" title={doc.original_filename}>{doc.original_filename || doc.document_name}</p>
-                              <p className="truncate text-[11px] text-slate-500">{doc.document_name} · {doc.service_type || 'Reservation'} #{doc.reservation_id} · {doc.status}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="truncate px-3">{type}</td>
-                        <td className="truncate px-3">{formatModified(doc.uploaded_at)}</td>
-                        <td className="px-3">{formatFileSize(doc.file_size)}</td>
-                        <td className="relative px-3 text-center">
-                          <button type="button" className="text-slate-500 hover:text-parish-blue" aria-label={`Actions for ${doc.original_filename}`} onClick={() => setActiveMenu(activeMenu === doc.id ? null : doc.id)}>
-                            <MoreVertical className="h-4 w-4" />
-                          </button>
-                          {activeMenu === doc.id && <div className="absolute right-2 top-9 z-10 w-32 rounded-md border border-slate-200 bg-white py-1 text-left shadow-lg">
-                            {(image || pdf) && <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-slate-50" disabled={actionLoading === `view-${doc.id}`} onClick={() => viewDocument(doc)}><Eye className="h-3.5 w-3.5" />View</button>}
-                            <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-slate-50 disabled:opacity-50" disabled={actionLoading === `download-${doc.id}`} onClick={() => downloadDocument(doc)}><Download className="h-3.5 w-3.5" />Download</button>
-                          </div>}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <div className="flex min-h-12 items-center justify-between gap-3 border-t border-slate-200 px-4 text-xs text-slate-500">
-              <span>Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, matchingDocuments.length)} of {matchingDocuments.length} files</span>
-              <div className="flex items-center gap-1">
-                <button type="button" aria-label="Previous page" className="rounded p-1.5 hover:bg-slate-100 disabled:opacity-40" disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}><ChevronLeft className="h-4 w-4" /></button>
-                <span className="grid h-7 min-w-7 place-items-center rounded bg-parish-blue px-2 text-white">{page}</span>
-                <button type="button" aria-label="Next page" className="rounded p-1.5 hover:bg-slate-100 disabled:opacity-40" disabled={page >= pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))}><ChevronRight className="h-4 w-4" /></button>
+      {matchingDocuments.length > 0 && (
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-x-5 gap-y-7 px-5 py-6 sm:px-8 sm:py-8">
+          {matchingDocuments.map((doc) => {
+            const image = doc.mime_type?.startsWith('image/');
+            const pdf = doc.mime_type === 'application/pdf';
+            const filename = doc.original_filename || doc.document_name || 'File';
+            return (
+              <div key={doc.id} className="group relative min-w-0 text-center">
+                <button
+                  type="button"
+                  aria-label={`Actions for ${filename}`}
+                  aria-expanded={activeMenu?.doc.id === doc.id}
+                  className="absolute right-1 top-1 z-10 rounded-md bg-white/90 p-1.5 text-[#697989] shadow-sm ring-1 ring-black/5 transition hover:text-[#a6813f] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#b18a45]"
+                  onClick={(event) => toggleFileMenu(event, doc)}
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full flex-col items-center rounded-lg p-2 transition-colors hover:bg-white/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#b18a45] focus-visible:ring-offset-2"
+                  onClick={() => viewDocument(doc)}
+                  aria-label={`Open ${filename}`}
+                  title={`${filename} · ${formatFileSize(doc.file_size)}`}
+                >
+                  <span className="mb-3 flex h-32 w-full items-center justify-center overflow-hidden rounded-md bg-white/70 p-2 ring-1 ring-inset ring-[#e7dfd2] transition group-hover:ring-[#c8a464]">
+                    {image && thumbnails[doc.id] ? (
+                      <img src={thumbnails[doc.id]} alt="" className="h-full w-full object-contain" />
+                    ) : (
+                      <span className="relative inline-flex h-24 w-[4.5rem] items-center justify-center">
+                        <FileText className={`h-full w-full ${pdf ? 'fill-white text-slate-300' : 'text-blue-500'}`} strokeWidth={1} />
+                        {pdf && <span className="absolute left-0 right-0 top-9 bg-red-600 py-1 text-[10px] font-bold tracking-wide text-white">PDF</span>}
+                      </span>
+                    )}
+                  </span>
+                  <span className="line-clamp-2 min-h-10 w-full break-words text-xs font-medium leading-5 text-[#263b4a]" title={filename}>{filename}</span>
+                </button>
               </div>
-            </div>
-          </div>
-        ) : (
-          <p className="rounded-md bg-gray-50 p-4 text-sm text-gray-500">{searchQuery ? 'No documents match this search.' : 'No uploaded files.'}</p>
-        )}
-      </DetailSection>
-      <ImagePreviewModal isOpen={!!previewDoc && !!previewUrl} src={previewUrl} alt={previewDoc?.original_filename} title={previewDoc?.document_name || 'Image Preview'} onClose={() => { setPreviewDoc(null); setPreviewUrl(null); }} />
+            );
+          })}
+        </div>
+      )}
+      {activeMenu && createPortal(
+        <div className="fixed z-[1000] w-36 rounded-md border border-slate-200 bg-white py-1 text-left shadow-lg" style={{ top: activeMenu.top, right: activeMenu.right }}>
+          <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-slate-50" onClick={() => { setActiveMenu(null); onDownload(activeMenu.doc); }}><Download className="h-3.5 w-3.5" />Download</button>
+          <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-slate-50" onClick={() => { setActiveMenu(null); onRename(activeMenu.doc); }}><Pencil className="h-3.5 w-3.5" />Rename</button>
+          <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-600 hover:bg-red-50" onClick={() => { setActiveMenu(null); onDelete(activeMenu.doc); }}><Trash2 className="h-3.5 w-3.5" />Delete</button>
+        </div>,
+        document.body,
+      )}
+      <ImagePreviewModal isOpen={!!previewDoc && !!previewUrl} src={previewUrl} alt={previewDoc?.original_filename} title={previewDoc?.document_name || 'Image Preview'} onClose={() => {
+        if (previewBlobUrlRef.current) URL.revokeObjectURL(previewBlobUrlRef.current);
+        previewBlobUrlRef.current = null;
+        setPreviewDoc(null);
+        setPreviewUrl(null);
+      }} />
     </>
   );
 }
 
-function RecordDetailsContent({ detail, searchQuery }) {
+function RecordDetailsContent({ detail, searchQuery, onDownload, onRename, onDelete }) {
   const recordDetail = detail && typeof detail === 'object' ? detail : {};
-  const parishioner = recordDetail.parishioner && typeof recordDetail.parishioner === 'object' ? recordDetail.parishioner : {};
-  const reservations = Array.isArray(recordDetail.reservations) ? recordDetail.reservations : [];
-  const appointments = Array.isArray(recordDetail.appointments) ? recordDetail.appointments : [];
-  const parishRecords = Array.isArray(recordDetail.parish_records) ? recordDetail.parish_records : [];
   const documents = Array.isArray(recordDetail.documents) ? recordDetail.documents : [];
-  const reservation = reservations[0];
-  const submittedFields = reservation ? getSubmittedDetailFields(reservation) : [];
-  return (
-    <div className="space-y-5">
-      <DetailSection title="Parishioner Information">
-        <dl className="grid gap-4 rounded-md bg-[#fbfaf7] p-4 sm:grid-cols-2">
-          <DetailField label="Full Name" value={parishioner.fullname} />
-          <DetailField label="Email" value={parishioner.email} />
-          <DetailField label="Contact Number" value={parishioner.phone} />
-          <DetailField label="Address" value={parishioner.address} />
-        </dl>
-      </DetailSection>
-      {reservation && <DetailSection title="Submitted Information">
-        <dl className="grid gap-4 rounded-md bg-[#fbfaf7] p-4 sm:grid-cols-2">
-          <DetailField label="Service" value={reservation.service_type} />
-          <DetailField label="Reservation ID" value={`#${reservation.id}`} />
-          <DetailField label="Date" value={formatDate(reservation.reservation_date)} />
-          <DetailField label="Time" value={formatTime(reservation.reservation_time)} />
-          <DetailField label="Status" value={reservation.status} />
-          <DetailField label="Date Submitted" value={formatDate(reservation.created_at)} />
-          {reservation.remarks && <DetailField label="Remarks" value={reservation.remarks} className="sm:col-span-2" />}
-          {submittedFields.length > 0 && <div className="sm:col-span-2 border-t border-[#e7dfd2] pt-4">
-            <h4 className="mb-3 text-xs font-semibold uppercase text-gray-500">Submitted Requirements</h4>
-            <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-              {submittedFields.map((field, index) => <DetailField key={`${field.label}-${index}`} label={field.label} value={field.value} />)}
-            </div>
-          </div>}
-        </dl>
-      </DetailSection>}
-      {appointments.length > 0 && <DetailSection title="Appointments">
-        <div className="space-y-2">{appointments.map((appointment) => <div key={appointment.id} className="rounded-md border border-slate-200 p-3 text-sm"><span className="font-medium">{appointment.purpose}</span><span className="ml-2 text-slate-500">{formatDate(appointment.appointment_date)} · {formatTime(appointment.appointment_time)}</span></div>)}</div>
-      </DetailSection>}
-      {parishRecords.length > 0 && <DetailSection title="Archive Notes">
-        <div className="space-y-2">{parishRecords.map((record) => <div key={record.id} className="rounded-md border border-slate-200 p-3"><div className="flex justify-between gap-3 text-sm"><span className="font-medium">{record.service_type}</span><span className="text-slate-500">{formatDate(record.created_at)}</span></div><p className="mt-2 whitespace-pre-wrap text-sm text-slate-600">{record.details}</p></div>)}</div>
-      </DetailSection>}
-      <UploadedDocumentsSection documents={documents} searchQuery={searchQuery} />
-    </div>
-  );
+  return <UploadedDocumentsSection documents={documents} searchQuery={searchQuery} onDownload={onDownload} onRename={onRename} onDelete={onDelete} />;
 }
 
 function FolderContentTable({ rows, loading, emptyMessage, onOpenFolder, onOpenFile, onDeleteFile, onDeleteFolder, onDeleteRecord }) {
@@ -512,6 +385,11 @@ export default function AdminRecords() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [renameDocumentTarget, setRenameDocumentTarget] = useState(null);
+  const [renameDocumentName, setRenameDocumentName] = useState('');
+  const [deleteDocumentTarget, setDeleteDocumentTarget] = useState(null);
+  const [documentActionError, setDocumentActionError] = useState('');
+  const [documentActionLoading, setDocumentActionLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
   const load = useCallback(async () => {
@@ -901,11 +779,9 @@ export default function AdminRecords() {
       .filter((record) => String(record.fullname || '').toLowerCase().startsWith(fileSearchPrefix))
       .map((record) => ({ id: `search-${recordKey(record)}`, name: record.fullname, type: record.service_type, modified: record.created_at || record.latest_activity_at, record }))
     : [];
-  const visibleCustomFolderRows = hasFileSearch ? [] : customFolderRows;
   const folderRows = hasFileSearch ? [...recordSearchRows, ...managerFileRows] : [...officialFolderRows, ...customFolderRows, ...managerFileRows];
   const pageCount = Math.max(1, Math.ceil(folderRows.length / PAGE_SIZE));
   const pageRows = folderRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const selectedReservation = detail?.reservations?.[0];
   const uploadOptions = viewRecord && !viewRecord.is_unlinked
     ? (documentRequirements[viewRecord.service_type] || []).filter((requirement) => !detail?.documents?.some((doc) => doc.document_type === requirement.type && doc.status !== 'Rejected'))
     : [];
@@ -917,6 +793,73 @@ export default function AdminRecords() {
     if (uploadOptions.length && !uploadOptions.some((option) => option.type === uploadDocumentType)) setUploadDocumentType(uploadOptions[0].type);
     else if (!uploadOptions.length && uploadDocumentType) setUploadDocumentType('');
   }, [viewRecord, detail, documentRequirements, uploadOptions, uploadDocumentType]);
+
+  const downloadReservationFile = async (doc) => {
+    try {
+      const { blob } = await fetchReservationDocument(doc.id);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = doc.original_filename || doc.document_name || 'download';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (downloadError) {
+      setDetailError(formatApiError(downloadError, 'The file could not be downloaded.'));
+    }
+  };
+
+  const openRenameDocument = (doc) => {
+    setDocumentActionError('');
+    setRenameDocumentName(doc.original_filename || doc.document_name || '');
+    setRenameDocumentTarget(doc);
+  };
+
+  const saveRenamedDocument = async (event) => {
+    event.preventDefault();
+    if (!renameDocumentTarget || documentActionLoading) return;
+    setDocumentActionLoading(true);
+    setDocumentActionError('');
+    try {
+      const filename = renameDocumentName.trim();
+      await renameReservationDocument({
+        document_id: renameDocumentTarget.id,
+        original_filename: filename,
+      });
+      setDetail((previous) => previous ? {
+        ...previous,
+        documents: (previous.documents || []).map((doc) => Number(doc.id) === Number(renameDocumentTarget.id)
+          ? { ...doc, original_filename: filename }
+          : doc),
+      } : previous);
+      setRenameDocumentTarget(null);
+      setSuccessMessage('File renamed successfully.');
+    } catch (renameError) {
+      setDocumentActionError(formatApiError(renameError, 'The file could not be renamed.'));
+    } finally {
+      setDocumentActionLoading(false);
+    }
+  };
+
+  const confirmDeleteDocument = async () => {
+    if (!deleteDocumentTarget || documentActionLoading) return;
+    setDocumentActionLoading(true);
+    setDocumentActionError('');
+    try {
+      await deleteReservationDocument(deleteDocumentTarget.id);
+      setDetail((previous) => previous ? {
+        ...previous,
+        documents: (previous.documents || []).filter((doc) => Number(doc.id) !== Number(deleteDocumentTarget.id)),
+      } : previous);
+      setDeleteDocumentTarget(null);
+      setSuccessMessage('File deleted successfully.');
+    } catch (deleteErrorValue) {
+      setDocumentActionError(formatApiError(deleteErrorValue, 'The file could not be deleted.'));
+    } finally {
+      setDocumentActionLoading(false);
+    }
+  };
 
   const uploadFile = async (event) => {
     const file = event.target.files?.[0];
@@ -941,14 +884,14 @@ export default function AdminRecords() {
 
   return (
     <DashboardLayout contentClassName="!pt-0" onRecordsClick={openRoot}>
-      <div className="sticky top-0 z-20 -mx-4 mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-[#e7dfd2] bg-white/95 px-4 py-2 backdrop-blur-sm md:-mx-6 md:px-6 lg:-mx-8 lg:px-8">
-        <nav aria-label="Folder breadcrumb" className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto whitespace-nowrap text-xs font-semibold text-[#34495a]">
+      <div className="sticky top-0 z-20 -mx-4 mb-3 flex flex-col gap-2 border-b border-[#e7dfd2] bg-white/95 px-4 py-2.5 backdrop-blur-sm md:-mx-6 md:px-6 lg:-mx-8 lg:px-8">
+        <nav aria-label="Folder breadcrumb" className="flex min-w-0 items-center gap-2 overflow-x-auto whitespace-nowrap text-xs font-semibold text-[#34495a]">
           <button type="button" className={`shrink-0 hover:text-[#a6813f] ${!selectedService ? 'text-[#1f3342]' : ''}`} onClick={openRoot}>Records</button>
           {selectedService && <><ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#a9a49a]" /><button type="button" className={`shrink-0 hover:text-[#a6813f] ${!viewRecord && !folderTrail.length ? 'text-[#1f3342]' : ''}`} onClick={() => openService(selectedService)}>{selectedService}</button></>}
-          {viewRecord && <><ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#a9a49a]" /><button type="button" className={`max-w-56 truncate hover:text-[#a6813f] ${!folderTrail.length ? 'text-[#1f3342]' : ''}`} onClick={() => openRecord(viewRecord)}>{viewRecord.fullname}</button></>}
+          {viewRecord && <><ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#a9a49a]" /><button type="button" title={viewRecord.fullname} className={`max-w-[min(70vw,32rem)] truncate hover:text-[#a6813f] ${!folderTrail.length ? 'text-[#1f3342]' : ''}`} onClick={() => openRecord(viewRecord)}>{viewRecord.fullname}</button></>}
           {folderTrail.map((folder, index) => <span key={folder.id} className="inline-flex shrink-0 items-center gap-2"><ChevronRight className="h-3.5 w-3.5 text-[#a9a49a]" />{index === folderTrail.length - 1 ? <span aria-current="page" className="text-[#1f3342]">{folder.name}</span> : <button type="button" className="hover:text-[#a6813f]" onClick={() => { setFolderTrail((trail) => trail.slice(0, index + 1)); setSearchText(''); setPage(1); }}>{folder.name}</button>}</span>)}
         </nav>
-        <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
+        <div className="flex w-full flex-wrap items-center justify-end gap-2">
           <input ref={folderFileInputRef} type="file" className="hidden" onChange={uploadManagerFile} />
           <button type="button" className="inline-flex h-9 shrink-0 items-center justify-center rounded-md bg-[#b18a45] px-2.5 text-xs font-semibold text-white transition hover:bg-[#967338] disabled:opacity-60" onClick={() => folderFileInputRef.current?.click()} disabled={fileUploading}>
             <UploadCloud className="mr-1.5 h-3.5 w-3.5" />{fileUploading ? 'Uploading…' : 'Upload File'}
@@ -975,29 +918,22 @@ export default function AdminRecords() {
       {successMessage && <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">{successMessage}</div>}
       {folderError && <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{folderError}</div>}
 
-      <section className="overflow-hidden rounded-lg border border-[#e7dfd2] bg-white shadow-sm">
+      <section className={viewRecord ? 'min-h-0' : 'overflow-hidden rounded-lg border border-[#e7dfd2] bg-white shadow-sm'}>
         {loading ? <div className="py-12"><LoadingSpinner /><p className="mt-2 text-center text-sm text-slate-500">Loading records...</p></div>
           : error ? <ErrorState message={error} onRetry={load} />
             : folderTrail.length ? <FolderContentTable rows={folderRows} loading={folderListLoading} emptyMessage="This folder is empty." onOpenFolder={(row) => row.customFolder ? openCustomFolder(row.customFolder) : row.record ? openRecord(row.record) : row.service ? openService(row.service) : null} onOpenFile={openManagerFile} onDeleteFile={removeManagerFile} onDeleteFolder={removeCustomFolder} onDeleteRecord={openDelete} />
             : viewRecord ? detailLoading ? <div className="py-12"><LoadingSpinner /><p className="mt-2 text-center text-sm text-slate-500">Loading record details...</p></div>
               : detailError && !detail ? <div className="p-6 text-center"><p className="mb-4 text-sm text-red-600">{detailError}</p><button type="button" className="btn-primary text-sm" onClick={() => openRecord(viewRecord)}>Try again</button></div>
-                : detail ? <div className="space-y-5 p-4 sm:p-6">
+                : detail ? <>
                   {detailError && <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{detailError}</p>}
-                  <DetailSection title="Record Information">
-                    <dl className="grid gap-x-6 gap-y-4 rounded-md bg-[#fbfaf7] p-4 sm:grid-cols-2 lg:grid-cols-3">
-                      <DetailField label="Service" value={selectedService} />
-                      <DetailField label="Reservation ID" value={viewRecord.reservation_id ? `#${viewRecord.reservation_id}` : 'Manual archive record'} />
-                      <div><dt className="mb-1 text-xs font-medium uppercase text-gray-500">Status</dt><dd>{selectedReservation?.status ? <StatusBadge status={selectedReservation.status} /> : 'Archived'}</dd></div>
-                      <DetailField label="Date" value={formatDate(selectedReservation?.reservation_date || viewRecord.record_date)} />
-                      <DetailField label="Time" value={formatTime(selectedReservation?.reservation_time || viewRecord.record_time)} />
-                      <DetailField label="Parishioner" value={detail.parishioner?.fullname || viewRecord.fullname} />
-                    </dl>
-                  </DetailSection>
-                  <RecordDetailsContent detail={detail} searchQuery={documentSearch} />
-                  <DetailSection title="Files in this folder">
-                    <FolderContentTable rows={[...visibleCustomFolderRows, ...managerFileRows]} loading={folderListLoading} emptyMessage="No files or folders in this record." onOpenFolder={(row) => row.customFolder ? openCustomFolder(row.customFolder) : null} onOpenFile={openManagerFile} onDeleteFile={removeManagerFile} onDeleteFolder={removeCustomFolder} onDeleteRecord={openDelete} />
-                  </DetailSection>
-                </div> : <div className="p-6 text-center"><p className="mb-4 text-sm text-red-600">No record information was returned.</p><button type="button" className="btn-primary text-sm" onClick={() => openRecord(viewRecord)}>Try again</button></div>
+                  <RecordDetailsContent
+                    detail={detail}
+                    searchQuery={documentSearch}
+                    onDownload={downloadReservationFile}
+                    onRename={openRenameDocument}
+                    onDelete={(doc) => { setDocumentActionError(''); setDeleteDocumentTarget(doc); }}
+                  />
+                </> : <div className="p-6 text-center"><p className="mb-4 text-sm text-red-600">No record information was returned.</p><button type="button" className="btn-primary text-sm" onClick={() => openRecord(viewRecord)}>Try again</button></div>
               : <FolderContentTable rows={folderRows} loading={folderListLoading} emptyMessage={selectedService ? 'No official records or files in this folder.' : 'No folders or files match this search.'} onOpenFolder={(row) => row.customFolder ? openCustomFolder(row.customFolder) : row.record ? openRecord(row.record) : row.service ? openService(row.service) : null} onOpenFile={openManagerFile} onDeleteFile={removeManagerFile} onDeleteFolder={removeCustomFolder} onDeleteRecord={openDelete} />}
       </section>
 
@@ -1019,6 +955,48 @@ export default function AdminRecords() {
           <p className="text-sm text-slate-600">Are you sure you want to delete <span className="font-semibold text-[#0f2337]">{deleteTarget.fullname}</span>&apos;s official record? This removes only the selected reservation or archive record and its associated documents.</p>
           {deleteError && <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3"><p className="text-sm font-semibold text-red-800">Unable to Delete Record</p><p className="mt-1 text-sm text-red-700">{deleteError}</p></div>}
           <div className="mt-6 flex justify-end gap-3"><button type="button" className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50" onClick={closeDelete} disabled={deleting}>Cancel</button><button type="button" className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60" onClick={confirmDelete} disabled={deleting}>{deleting ? 'Deleting...' : 'Delete Record'}</button></div>
+        </div>}
+      </Modal>
+
+      <Modal
+        isOpen={!!renameDocumentTarget}
+        onClose={() => !documentActionLoading && setRenameDocumentTarget(null)}
+        title="Rename File"
+        size="sm"
+      >
+        <form onSubmit={saveRenamedDocument}>
+          <label htmlFor="record-document-rename" className="mb-1.5 block text-sm font-medium text-slate-700">File name</label>
+          <input
+            id="record-document-rename"
+            autoFocus
+            required
+            maxLength={255}
+            value={renameDocumentName}
+            onChange={(event) => setRenameDocumentName(event.target.value)}
+            className="input-field"
+          />
+          <p className="mt-2 text-xs text-slate-500">Keep the existing file extension.</p>
+          {documentActionError && <p className="mt-3 text-sm text-red-600" role="alert">{documentActionError}</p>}
+          <div className="mt-5 flex justify-end gap-2">
+            <button type="button" className="rounded-md border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50" onClick={() => setRenameDocumentTarget(null)} disabled={documentActionLoading}>Cancel</button>
+            <button type="submit" className="btn-primary text-sm" disabled={documentActionLoading || !renameDocumentName.trim()}>{documentActionLoading ? 'Saving…' : 'Save name'}</button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={!!deleteDocumentTarget}
+        onClose={() => !documentActionLoading && setDeleteDocumentTarget(null)}
+        title="Delete File?"
+        size="sm"
+      >
+        {deleteDocumentTarget && <div>
+          <p className="text-sm text-slate-600">Are you sure you want to delete <span className="font-semibold text-[#0f2337]">{deleteDocumentTarget.original_filename || deleteDocumentTarget.document_name}</span>? This cannot be undone.</p>
+          {documentActionError && <p className="mt-3 text-sm text-red-600" role="alert">{documentActionError}</p>}
+          <div className="mt-5 flex justify-end gap-2">
+            <button type="button" className="rounded-md border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50" onClick={() => setDeleteDocumentTarget(null)} disabled={documentActionLoading}>Cancel</button>
+            <button type="button" className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60" onClick={confirmDeleteDocument} disabled={documentActionLoading}>{documentActionLoading ? 'Deleting…' : 'Delete file'}</button>
+          </div>
         </div>}
       </Modal>
     </DashboardLayout>

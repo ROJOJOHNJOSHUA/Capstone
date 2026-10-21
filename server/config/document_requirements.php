@@ -40,11 +40,6 @@ return [
 
     'Marriage' => [
         [
-            'name' => 'Marriage License',
-            'required' => true,
-            'type' => 'marriage_license',
-        ],
-        [
             'name' => 'CENOMAR',
             'required' => true,
             'type' => 'cenomar',

@@ -34,6 +34,7 @@ $docStmt = $db->prepare(
      FROM reservation_documents rd
      INNER JOIN reservations r ON rd.reservation_id = r.id
      WHERE r.user_id = ?
+       AND rd.document_type <> \'reservation_details_deleted\'
      ORDER BY rd.uploaded_at ASC'
 );
 $docStmt->execute([$userId]);

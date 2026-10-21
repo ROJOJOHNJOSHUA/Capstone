@@ -1,0 +1,118 @@
+@startuml
+title Holy Family Parish System - Use Case Diagram
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor Parishioner
+actor Administrator
+actor "TextBee SMS Gateway" as TextBee
+
+rectangle "Holy Family Parish System" {
+  package "Appointment Management" {
+    usecase "Check appointment\navailability" as UC_CheckAppointment
+    usecase "Submit appointment\nrequest" as UC_SubmitAppointment
+    usecase "View appointment\nstatus" as UC_ViewAppointment
+    usecase "Cancel pending\nappointment" as UC_CancelAppointment
+    usecase "Review appointments" as UC_ReviewAppointments
+    usecase "Update appointment\nstatus and remarks" as UC_UpdateAppointment
+  }
+
+  package "Reservation Management" {
+    usecase "Check reservation\navailability" as UC_CheckReservation
+    usecase "Submit service\nreservation" as UC_SubmitReservation
+    usecase "Upload required\ndocuments" as UC_UploadDocuments
+    usecase "View reservation\nstatus" as UC_ViewReservation
+    usecase "Cancel reservation" as UC_CancelReservation
+    usecase "Review reservations" as UC_ReviewReservations
+    usecase "Verify reservation\ndocuments" as UC_VerifyDocuments
+    usecase "Update reservation\nstatus and payment" as UC_UpdateReservation
+  }
+
+  package "Centralized Records" {
+    usecase "Manage parish records" as UC_ManageRecords
+    usecase "Search and view\nrecord archive" as UC_SearchRecords
+    usecase "Upload and download\nrecord files" as UC_RecordFiles
+    usecase "Create linked parish\nrecord on completion" as UC_CreateRecord
+  }
+
+  package "Notifications" {
+    usecase "View and manage\nsystem notifications" as UC_SystemNotifications
+    usecase "Create in-app\nstatus notification" as UC_CreateNotification
+    usecase "Send SMS update" as UC_SendSMS
+    usecase "Review SMS delivery\nlogs" as UC_SMSLogs
+  }
+
+  package "Connected Modules" {
+    usecase "View parish calendar" as UC_Calendar
+  }
+}
+
+Parishioner --> UC_CheckAppointment
+Parishioner --> UC_SubmitAppointment
+Parishioner --> UC_ViewAppointment
+Parishioner --> UC_CancelAppointment
+Parishioner --> UC_CheckReservation
+Parishioner --> UC_SubmitReservation
+Parishioner --> UC_UploadDocuments
+Parishioner --> UC_ViewReservation
+Parishioner --> UC_CancelReservation
+Parishioner --> UC_SystemNotifications
+
+Administrator --> UC_ReviewAppointments
+Administrator --> UC_UpdateAppointment
+Administrator --> UC_ReviewReservations
+Administrator --> UC_VerifyDocuments
+Administrator --> UC_UpdateReservation
+Administrator --> UC_ManageRecords
+Administrator --> UC_SearchRecords
+Administrator --> UC_RecordFiles
+Administrator --> UC_SystemNotifications
+Administrator --> UC_SMSLogs
+Administrator --> UC_Calendar
+
+TextBee --> UC_SendSMS
+
+UC_SubmitAppointment ..> UC_CheckAppointment : <<include>>
+UC_SubmitReservation ..> UC_CheckReservation : <<include>>
+UC_UploadDocuments ..> UC_SubmitReservation : <<extend>>
+UC_VerifyDocuments ..> UC_ReviewReservations : <<extend>>\n[documents provided]
+UC_CreateRecord ..> UC_UpdateReservation : <<extend>>\n[status becomes Completed]
+
+UC_SubmitAppointment ..> UC_CreateNotification : <<include>>
+UC_UpdateAppointment ..> UC_CreateNotification : <<include>>
+UC_SubmitReservation ..> UC_CreateNotification : <<include>>
+UC_UpdateReservation ..> UC_CreateNotification : <<include>>
+UC_CancelAppointment ..> UC_CreateNotification : <<include>>
+UC_CancelReservation ..> UC_CreateNotification : <<include>>
+
+UC_SendSMS ..> UC_SubmitAppointment : <<extend>>\n[phone available and updates enabled]
+UC_SendSMS ..> UC_UpdateAppointment : <<extend>>\n[phone available and updates enabled]
+UC_SendSMS ..> UC_SubmitReservation : <<extend>>\n[phone available]
+UC_SendSMS ..> UC_UpdateReservation : <<extend>>\n[phone available]
+
+UC_ManageRecords ..> UC_SearchRecords : <<include>>
+UC_RecordFiles ..> UC_ManageRecords : <<extend>>
+
+note right of UC_SendSMS
+  SMS is sent through TextBee when
+  a phone number is available.
+  Appointment SMS also follows the
+  parishioner's update preference.
+end note
+
+note bottom of UC_CreateRecord
+  A parish record is automatically created
+  when a reservation reaches Completed.
+end note
+
+note bottom of UC_Calendar
+  Appointment and reservation workflows
+  are connected to the shared parish schedule.
+  All modules use the parishioner account;
+  completed reservations link to Centralized Records,
+  while request and status events feed Notifications.
+end note
+
+@enduml

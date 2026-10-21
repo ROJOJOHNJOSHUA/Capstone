@@ -164,6 +164,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     }
     
     $data = getJsonInput();
+    if (($data['action'] ?? '') === 'rename') {
+        $documentId = (int) ($data['document_id'] ?? 0);
+        $filename = trim((string) ($data['original_filename'] ?? ''));
+
+        if ($documentId <= 0) {
+            errorResponse('Document ID is required.', 422);
+        }
+        if (
+            $filename === ''
+            || strlen($filename) > 255
+            || basename($filename) !== $filename
+            || preg_match('/[\x00-\x1F\x7F\/\\\\]/', $filename)
+            || in_array($filename, ['.', '..'], true)
+        ) {
+            errorResponse('Enter a valid file name.', 422);
+        }
+
+        $documentStmt = $db->prepare(
+            'SELECT document_type, original_filename
+             FROM reservation_documents
+             WHERE id = ?'
+        );
+        $documentStmt->execute([$documentId]);
+        $document = $documentStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$document || $document['document_type'] === 'reservation_details_deleted') {
+            errorResponse('Document not found.', 404);
+        }
+        if (strtolower(pathinfo($filename, PATHINFO_EXTENSION)) !== strtolower(pathinfo($document['original_filename'], PATHINFO_EXTENSION))) {
+            errorResponse('The file extension cannot be changed.', 422);
+        }
+
+        $renameStmt = $db->prepare('UPDATE reservation_documents SET original_filename = ? WHERE id = ?');
+        $renameStmt->execute([$filename, $documentId]);
+        logSystemAction($db, $userId, 'Document Renamed', 'Documents', "Renamed document #{$documentId}.", 'Document', $documentId);
+        successResponse(['original_filename' => $filename], 'Document renamed successfully.');
+    }
+
     $documentId = (int) ($data['document_id'] ?? 0);
     $status = (string) ($data['status'] ?? '');
     $remarks = trim((string) ($data['remarks'] ?? ''));
@@ -193,6 +230,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     $document = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$document) {
+        errorResponse('Document not found.', 404);
+    }
+    if ($document['document_type'] === 'reservation_details_deleted') {
         errorResponse('Document not found.', 404);
     }
 
@@ -246,10 +286,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     
     // Get documents
     $stmt = $db->prepare(
-        'SELECT id, document_name, document_type, original_filename, mime_type, file_size, status, remarks, uploaded_at
-         FROM reservation_documents 
-         WHERE reservation_id = ? 
-         ORDER BY uploaded_at DESC'
+        "SELECT id, document_name, document_type, original_filename, mime_type, file_size, status, remarks, uploaded_at
+         FROM reservation_documents
+         WHERE reservation_id = ? AND document_type <> 'reservation_details_deleted'
+         ORDER BY uploaded_at DESC"
     );
     $stmt->execute([$reservationId]);
     $documents = $stmt->fetchAll();
@@ -284,6 +324,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     if (!$document) {
         errorResponse('Document not found.', 404);
     }
+    if ($document['document_type'] === 'reservation_details_deleted') {
+        errorResponse('Document not found.', 404);
+    }
     
     // Verify ownership or admin access
     if (!$isAdmin && (int) $document['reservation_user_id'] !== $userId) {
@@ -304,9 +347,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
             throw new Exception($deleteResult['error']);
         }
         
-        // Delete database record
-        $deleteStmt = $db->prepare('DELETE FROM reservation_documents WHERE id = ?');
-        $deleteStmt->execute([$documentId]);
+        if ($document['document_type'] === 'reservation_details') {
+            $deleteStmt = $db->prepare(
+                "UPDATE reservation_documents
+                 SET document_type = 'reservation_details_deleted',
+                     original_filename = '',
+                     stored_filename = '',
+                     file_path = '',
+                     mime_type = 'application/octet-stream',
+                     file_size = 0
+                 WHERE id = ?"
+            );
+            $deleteStmt->execute([$documentId]);
+        } else {
+            $deleteStmt = $db->prepare('DELETE FROM reservation_documents WHERE id = ?');
+            $deleteStmt->execute([$documentId]);
+        }
         
         // Clean up empty folder
         cleanupEmptyReservationFolder((int) $document['reservation_id'], $baseUploadDir);
