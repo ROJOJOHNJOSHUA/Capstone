@@ -455,7 +455,7 @@ export default function AdminRecords() {
         } else {
           errors.push(formatApiError(fileResult.reason, 'Unable to load files.'));
         }
-        setFolderError(errors.join(' '));
+        setFolderError([...new Set(errors)].join(' '));
       })
       .finally(() => {
         if (!cancelled) setFolderListLoading(false);
