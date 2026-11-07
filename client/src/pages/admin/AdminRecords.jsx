@@ -927,7 +927,7 @@ export default function AdminRecords() {
                 : detail ? <>
                   {detailError && <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{detailError}</p>}
                   <div className="space-y-5">
-                    <div>
+                    {recordFolderRows.length > 0 && <div>
                       <h2 className="mb-2 text-sm font-semibold text-[#34495a]">{viewRecord.is_unlinked ? 'Record files and folders' : 'Parishioner files and folders'}</h2>
                       <FolderContentTable
                         rows={recordFolderRows}
@@ -939,7 +939,7 @@ export default function AdminRecords() {
                         onDeleteFolder={removeCustomFolder}
                         onDeleteRecord={openDelete}
                       />
-                    </div>
+                    </div>}
                     <div>
                       <h2 className="mb-2 text-sm font-semibold text-[#34495a]">Official documents</h2>
                       <RecordDetailsContent
