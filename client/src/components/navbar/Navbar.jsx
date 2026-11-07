@@ -146,7 +146,7 @@ export default function Navbar({ dashboard = false, isSidebarOpen = false, onSid
   return (
     <>
       <nav className={`${dashboard && user ? 'admin-dashboard-nav' : ''} fixed inset-x-0 top-0 z-50 border-b backdrop-blur-xl ${user ? 'border-white/10 bg-[#0f2337]/95 text-white shadow-[0_12px_28px_rgba(6,14,22,0.14)]' : 'border-[#e8dfd0] bg-[#fffdf8]/95 text-[#273746] shadow-[0_8px_24px_rgba(83,65,34,0.08)]'} ${dashboard ? 'xl:left-64' : ''}`}>
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+      <div className="site-container px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-2 sm:gap-5 h-16 sm:h-20">
           {!user && (
             <button

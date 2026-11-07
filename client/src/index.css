@@ -52,6 +52,12 @@ html {
 }
 
 @layer components {
+  .site-container {
+    width: 100%;
+    max-width: none;
+    margin-inline: auto;
+  }
+
   .page-shell {
     @apply bg-[#f6f1e6] dark:bg-gray-900;
   }

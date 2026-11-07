@@ -125,7 +125,7 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout>
-      <div className="mx-auto w-full max-w-[1440px] space-y-4">
+      <div className="site-container space-y-4">
         <section aria-label="Live approval counts" className="grid gap-4 sm:grid-cols-2">
           <ApprovalStat
             icon={ClipboardCheck}

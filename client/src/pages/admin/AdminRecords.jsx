@@ -70,7 +70,8 @@ function recordKey(record) {
 function recordFolderParams(context) {
   if (context.folder) return { parent_type: 'folder', parent_id: context.folder.id };
   if (context.record) return { parent_type: 'record', parent_id: context.record.parish_record_id };
-  if (context.reservation) return { parent_type: 'reservation', parent_id: context.reservation.reservation_id };
+  if (context.parishioner) return { parent_type: 'parishioner', parent_id: context.parishioner.user_id };
+  if (context.reservation?.reservation_id) return { parent_type: 'reservation', parent_id: context.reservation.reservation_id };
   if (context.service) return { parent_type: 'service', service_type: context.service };
   return { parent_type: 'root' };
 }
@@ -421,7 +422,9 @@ export default function AdminRecords() {
     ? { folder: currentCustomFolder }
     : viewRecord?.is_unlinked
       ? { record: viewRecord }
-      : viewRecord
+      : viewRecord?.user_id
+        ? { parishioner: viewRecord }
+        : viewRecord?.reservation_id
         ? { reservation: viewRecord }
         : selectedService
           ? { service: selectedService }
@@ -769,6 +772,7 @@ export default function AdminRecords() {
           : `${(extension || 'file').toUpperCase()} File`;
       return { id: `file-${file.id}`, name: file.original_filename, type, modified: file.uploaded_at, size: formatFileSize(file.file_size), file };
     });
+  const recordFolderRows = [...customFolderRows, ...managerFileRows];
   const hasFileSearch = Boolean(fileSearchPrefix);
   const recordSearchRows = hasFileSearch
     ? records
@@ -922,13 +926,31 @@ export default function AdminRecords() {
               : detailError && !detail ? <div className="p-6 text-center"><p className="mb-4 text-sm text-red-600">{detailError}</p><button type="button" className="btn-primary text-sm" onClick={() => openRecord(viewRecord)}>Try again</button></div>
                 : detail ? <>
                   {detailError && <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{detailError}</p>}
-                  <RecordDetailsContent
-                    detail={detail}
-                    searchQuery={documentSearch}
-                    onDownload={downloadReservationFile}
-                    onRename={openRenameDocument}
-                    onDelete={(doc) => { setDocumentActionError(''); setDeleteDocumentTarget(doc); }}
-                  />
+                  <div className="space-y-5">
+                    <div>
+                      <h2 className="mb-2 text-sm font-semibold text-[#34495a]">{viewRecord.is_unlinked ? 'Record files and folders' : 'Parishioner files and folders'}</h2>
+                      <FolderContentTable
+                        rows={recordFolderRows}
+                        loading={folderListLoading}
+                        emptyMessage={viewRecord.is_unlinked ? 'No files or folders in this record folder.' : 'No files or folders in this parishioner folder.'}
+                        onOpenFolder={(row) => row.customFolder ? openCustomFolder(row.customFolder) : row.record ? openRecord(row.record) : row.service ? openService(row.service) : null}
+                        onOpenFile={openManagerFile}
+                        onDeleteFile={removeManagerFile}
+                        onDeleteFolder={removeCustomFolder}
+                        onDeleteRecord={openDelete}
+                      />
+                    </div>
+                    <div>
+                      <h2 className="mb-2 text-sm font-semibold text-[#34495a]">Official documents</h2>
+                      <RecordDetailsContent
+                        detail={detail}
+                        searchQuery={documentSearch}
+                        onDownload={downloadReservationFile}
+                        onRename={openRenameDocument}
+                        onDelete={(doc) => { setDocumentActionError(''); setDeleteDocumentTarget(doc); }}
+                      />
+                    </div>
+                  </div>
                 </> : <div className="p-6 text-center"><p className="mb-4 text-sm text-red-600">No record information was returned.</p><button type="button" className="btn-primary text-sm" onClick={() => openRecord(viewRecord)}>Try again</button></div>
               : <FolderContentTable rows={folderRows} loading={folderListLoading} emptyMessage={selectedService ? 'No official records or files in this folder.' : 'No folders or files match this search.'} onOpenFolder={(row) => row.customFolder ? openCustomFolder(row.customFolder) : row.record ? openRecord(row.record) : row.service ? openService(row.service) : null} onOpenFile={openManagerFile} onDeleteFile={removeManagerFile} onDeleteFolder={removeCustomFolder} onDeleteRecord={openDelete} />}
       </section>

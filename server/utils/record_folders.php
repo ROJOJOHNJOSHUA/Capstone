@@ -23,6 +23,15 @@ function resolveRecordFolderParent(PDO $db, string $type, int $id, string $servi
         return ['scope' => 'reservation:' . $id, 'parent_id' => null];
     }
 
+    if ($type === 'parishioner') {
+        $stmt = $db->prepare("SELECT id FROM users WHERE id = ? AND role = 'user' LIMIT 1");
+        $stmt->execute([$id]);
+        if (!$stmt->fetchColumn()) {
+            errorResponse('The parishioner folder was not found.', 404);
+        }
+        return ['scope' => 'parishioner:' . $id, 'parent_id' => null];
+    }
+
     if ($type === 'record') {
         $stmt = $db->prepare('SELECT id FROM parish_records WHERE id = ? AND user_id IS NULL LIMIT 1');
         $stmt->execute([$id]);

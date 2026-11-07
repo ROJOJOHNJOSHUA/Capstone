@@ -7,7 +7,7 @@ export default function PublicPageLayout({ eyebrow, title, intro, children }) {
 			<Navbar />
 			<main>
 				<header className="public-page-header relative overflow-hidden border-b border-[#e9dfd0] px-4 py-12 sm:px-6 md:py-16 lg:px-8">
-					<div className="relative z-10 mx-auto grid max-w-7xl items-center gap-8 lg:grid-cols-[0.8fr_1.2fr]">
+					<div className="site-container relative z-10 grid items-center gap-8 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
 						<div>
 							<p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-[#b18a45]">{eyebrow}</p>
 							<h1 className="font-display text-4xl leading-tight text-[#273746] sm:text-5xl">{title}</h1>

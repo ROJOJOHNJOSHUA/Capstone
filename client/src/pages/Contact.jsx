@@ -14,7 +14,7 @@ export default function Contact() {
       <Navbar />
       <main>
 
-        <section className="mx-auto max-w-7xl px-4 py-7 sm:px-6 md:py-10 lg:px-8">
+        <section className="site-container px-4 py-7 sm:px-6 md:py-10 lg:px-8">
           <div className="grid items-stretch gap-5 lg:grid-cols-[0.95fr_1.05fr]">
             <article className="flex min-h-[390px] flex-col justify-center rounded-xl border border-[#e6ddcf] bg-white px-5 py-4 shadow-sm sm:px-6">
                 <div className="divide-y divide-[#eee5d6]"><div className="flex gap-3 pb-4"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#d7b57a] text-xs text-[#b18a45]">@</span><div><h2 className="font-display text-base text-[#273746]">Parish Contact</h2><p className="mt-1 text-[11px] leading-relaxed text-[#6e7274]"><a href="https://www.facebook.com/holyfamilyparishputiao" target="_blank" rel="noopener noreferrer" className="hover:text-[#a6813f]">FB Pages: Holy Family Parish</a><br /><span>Email: hfpputiao1916@gmail.com</span><br /><a href="tel:09194567890" className="hover:text-[#a6813f]">Contact No. : 09194567890</a></p></div></div><div className="flex gap-3 py-4"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#d7b57a] text-xs text-[#b18a45]">⌖</span>

@@ -207,7 +207,7 @@ export default function About() {
     <div className="min-h-screen bg-[#faf8f1] text-[#4e555a]">
       <Navbar />
       <main>
-        <section className="mx-auto max-w-7xl px-3 py-1 sm:px-6 sm:py-2 md:py-3 lg:px-8">
+        <section className="site-container px-3 py-1 sm:px-6 sm:py-2 md:py-3 lg:px-8">
           <div className="mt-2 sm:mt-3">
             <article className="w-full rounded-xl border border-[#e6ddcf] bg-white p-2 text-center shadow-sm sm:p-6 lg:p-10">
               <section className="mt-1 pt-1 sm:mt-6 sm:pt-4" aria-labelledby="organization-title">

@@ -95,7 +95,7 @@ function LocalDevelopmentDiagnostics() {
     return undefined;
   }, []);
 
-  return <div className="fixed bottom-3 left-3 z-[400] rounded-md bg-amber-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-900 shadow">Local Dev</div>;
+  return null;
 }
 
 export default function App() {

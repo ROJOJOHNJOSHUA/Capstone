@@ -52,7 +52,7 @@ export default function Services() {
       <Navbar />
       <main>
         <h1 className="mt-5 px-4 text-center font-display text-xl font-bold uppercase tracking-[0.1em] text-[#b18a45] sm:ml-8 sm:px-0 sm:text-left">Services we offer here!</h1>
-        <section className="mx-auto max-w-7xl px-4 pb-9 pt-2 sm:px-6 md:pb-14 md:pt-4 lg:px-8">
+        <section className="site-container px-4 pb-9 pt-2 sm:px-6 md:pb-14 md:pt-4 lg:px-8">
           <div className="relative">
             <button
               type="button"

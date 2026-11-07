@@ -79,7 +79,7 @@ export default function Footer() {
         aria-hidden
       />
 
-      <div className="relative mx-auto max-w-7xl px-5 pb-10 pt-12 sm:px-8 md:pt-14 lg:px-10">
+      <div className="site-container relative px-5 pb-10 pt-12 sm:px-8 md:pt-14 lg:px-10">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-8">
           <div className="sm:col-span-2 lg:col-span-5">
             <Link to="/" className="inline-flex items-center gap-2.5 group mb-5">
@@ -191,7 +191,7 @@ export default function Footer() {
 
       <div className="relative border-t border-white/10">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-px bg-gradient-to-r from-transparent via-parish-gold/60 to-transparent" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+        <div className="site-container px-4 py-5 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-center sm:text-left">
             <p className="text-xs text-blue-200/70 leading-relaxed">
               © {year} {PARISH_LOCATION.name}. Centralized Digital Record Management System.
