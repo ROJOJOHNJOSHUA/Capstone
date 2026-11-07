@@ -202,44 +202,40 @@ function UploadedDocumentsSection({ documents, searchQuery = '', onDownload, onR
   return (
     <>
       {matchingDocuments.length > 0 && (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-x-5 gap-y-7 px-5 py-6 sm:px-8 sm:py-8">
-          {matchingDocuments.map((doc) => {
-            const image = doc.mime_type?.startsWith('image/');
-            const pdf = doc.mime_type === 'application/pdf';
-            const filename = doc.original_filename || doc.document_name || 'File';
-            return (
-              <div key={doc.id} className="group relative min-w-0 text-center">
-                <button
-                  type="button"
-                  aria-label={`Actions for ${filename}`}
-                  aria-expanded={activeMenu?.doc.id === doc.id}
-                  className="absolute right-1 top-1 z-10 rounded-md bg-white/90 p-1.5 text-[#697989] shadow-sm ring-1 ring-black/5 transition hover:text-[#a6813f] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#b18a45]"
-                  onClick={(event) => toggleFileMenu(event, doc)}
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  className="flex w-full flex-col items-center rounded-lg p-2 transition-colors hover:bg-white/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#b18a45] focus-visible:ring-offset-2"
-                  onClick={() => viewDocument(doc)}
-                  aria-label={`Open ${filename}`}
-                  title={`${filename} · ${formatFileSize(doc.file_size)}`}
-                >
-                  <span className="mb-3 flex h-32 w-full items-center justify-center overflow-hidden rounded-md bg-white/70 p-2 ring-1 ring-inset ring-[#e7dfd2] transition group-hover:ring-[#c8a464]">
-                    {image && thumbnails[doc.id] ? (
-                      <img src={thumbnails[doc.id]} alt="" className="h-full w-full object-contain" />
-                    ) : (
-                      <span className="relative inline-flex h-24 w-[4.5rem] items-center justify-center">
-                        <FileText className={`h-full w-full ${pdf ? 'fill-white text-slate-300' : 'text-blue-500'}`} strokeWidth={1} />
-                        {pdf && <span className="absolute left-0 right-0 top-9 bg-red-600 py-1 text-[10px] font-bold tracking-wide text-white">PDF</span>}
-                      </span>
-                    )}
-                  </span>
-                  <span className="line-clamp-2 min-h-10 w-full break-words text-xs font-medium leading-5 text-[#263b4a]" title={filename}>{filename}</span>
-                </button>
-              </div>
-            );
-          })}
+        <div className="overflow-hidden rounded-lg border border-[#e7dfd2] bg-white">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] table-fixed border-separate border-spacing-y-1 text-left">
+              <colgroup><col style={{ width: '40%' }} /><col style={{ width: '17%' }} /><col style={{ width: '23%' }} /><col style={{ width: '14%' }} /><col style={{ width: '6%' }} /></colgroup>
+              <thead className="bg-[#f8f7f3] text-xs font-semibold text-[#34495a]"><tr className="h-11 border-b border-[#e7dfd2]">
+                <th className="px-3">Name</th><th className="px-3">Type</th><th className="px-3">Modified</th><th className="px-3">Size</th><th className="px-3 text-center"><MoreVertical className="mx-auto h-4 w-4" /></th>
+              </tr></thead>
+              <tbody className="text-sm text-[#6e7274]">
+                {matchingDocuments.map((doc) => {
+                  const image = doc.mime_type?.startsWith('image/');
+                  const pdf = doc.mime_type === 'application/pdf';
+                  const filename = doc.original_filename || doc.document_name || 'File';
+                  return (
+                    <tr key={doc.id} className="group h-[3.45rem] transition-colors">
+                      <td className="overflow-hidden rounded-l-md border-y border-l border-[#e7dfd2] bg-white px-3 transition-colors group-hover:bg-[#fbfaf7]">
+                        <button type="button" className="flex max-w-full items-center gap-3 text-left text-[#1f3342]" onClick={() => viewDocument(doc)} aria-label={`Open ${filename}`} title={`${filename} · ${formatFileSize(doc.file_size)}`}>
+                          {image && thumbnails[doc.id]
+                            ? <img src={thumbnails[doc.id]} alt="" className="h-7 w-7 shrink-0 rounded-sm border border-[#e7dfd2] object-cover" />
+                            : <FileText className={`h-6 w-6 shrink-0 ${pdf ? 'text-red-500' : 'text-blue-500'}`} strokeWidth={1.7} />}
+                          <span className="block min-w-0 truncate font-semibold" title={filename}>{filename}</span>
+                        </button>
+                      </td>
+                      <td className="truncate border-y border-[#e7dfd2] bg-white px-3 transition-colors group-hover:bg-[#fbfaf7]">{pdf ? 'PDF Document' : 'Image'}</td>
+                      <td className="truncate whitespace-nowrap border-y border-[#e7dfd2] bg-white px-3 transition-colors group-hover:bg-[#fbfaf7]">{formatModified(doc.uploaded_at)}</td>
+                      <td className="truncate whitespace-nowrap border-y border-[#e7dfd2] bg-white px-3 transition-colors group-hover:bg-[#fbfaf7]">{formatFileSize(doc.file_size)}</td>
+                      <td className="relative rounded-r-md border-y border-r border-[#e7dfd2] bg-white px-3 text-center transition-colors group-hover:bg-[#fbfaf7]">
+                        <button type="button" aria-label={`Actions for ${filename}`} aria-expanded={activeMenu?.doc.id === doc.id} className="text-[#697989] hover:text-[#a6813f]" onClick={(event) => toggleFileMenu(event, doc)}><MoreVertical className="h-4 w-4" /></button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
       {activeMenu && createPortal(
@@ -299,21 +295,21 @@ function FolderContentTable({ rows, loading, emptyMessage, onOpenFolder, onOpenF
   return (
     <div className="overflow-hidden rounded-lg border border-[#e7dfd2] bg-white">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] table-fixed text-left">
-          <colgroup><col style={{ width: '38%' }} /><col style={{ width: '18%' }} /><col style={{ width: '24%' }} /><col style={{ width: '15%' }} /><col style={{ width: '5%' }} /></colgroup>
+        <table className="w-full min-w-[640px] table-fixed border-separate border-spacing-y-1 text-left">
+          <colgroup><col style={{ width: '40%' }} /><col style={{ width: '17%' }} /><col style={{ width: '23%' }} /><col style={{ width: '14%' }} /><col style={{ width: '6%' }} /></colgroup>
           <thead className="bg-[#f8f7f3] text-xs font-semibold text-[#34495a]"><tr className="h-11 border-b border-[#e7dfd2]">
             <th className="px-3">Name <span className="ml-1 text-[#a6813f]">↕</span></th><th className="px-3">Type</th><th className="px-3">Modified <span className="ml-1 text-[#a6813f]">↕</span></th><th className="px-3">Size</th><th className="px-3 text-center"><MoreVertical className="mx-auto h-4 w-4" /></th>
           </tr></thead>
-          <tbody className="divide-y divide-[#eee9df] text-sm text-[#6e7274]">
-            {rows.map((row) => <tr key={row.id} className="h-[3.35rem] cursor-pointer hover:bg-[#fbfaf7]" onClick={() => row.file ? onOpenFile(row.file, true) : onOpenFolder(row)}>
-              <td className="overflow-hidden px-3"><button type="button" className="flex max-w-full items-center gap-3 text-left text-[#1f3342]" onClick={(event) => { event.stopPropagation(); row.file ? onOpenFile(row.file, true) : onOpenFolder(row); }}>
-                {row.file ? <FileText className={`h-7 w-7 shrink-0 ${row.file.mime_type === 'application/pdf' ? 'text-red-500' : 'text-blue-500'}`} /> : <Folder className="h-7 w-7 shrink-0 fill-[#d7b57a] text-[#b18a45]" strokeWidth={1.5} />}
+          <tbody className="text-sm text-[#6e7274]">
+            {rows.map((row) => <tr key={row.id} className="group h-[3.45rem] cursor-pointer transition-colors" onClick={() => row.file ? onOpenFile(row.file, true) : onOpenFolder(row)}>
+              <td className="overflow-hidden rounded-l-md border-y border-l border-[#e7dfd2] bg-white px-3 transition-colors group-hover:bg-[#fbfaf7]"><button type="button" className="flex max-w-full items-center gap-3 text-left text-[#1f3342]" onClick={(event) => { event.stopPropagation(); row.file ? onOpenFile(row.file, true) : onOpenFolder(row); }}>
+                {row.file ? <FileText className={`h-6 w-6 shrink-0 ${row.file.mime_type === 'application/pdf' ? 'text-red-500' : 'text-blue-500'}`} strokeWidth={1.7} /> : <Folder className="h-6 w-6 shrink-0 fill-[#d7b57a] text-[#b18a45]" strokeWidth={1.5} />}
                 <span className="min-w-0 truncate"><span className="block truncate font-semibold">{row.name}</span>{row.record && <span className="block truncate text-[11px] font-normal text-[#8a8d8f]">{row.record.reservation_id ? `Reservation #${row.record.reservation_id}` : 'Manual archive record'}</span>}</span>
               </button></td>
-              <td className="truncate px-3">{row.file ? (row.file.mime_type === 'application/pdf' ? 'PDF Document' : row.file.mime_type?.startsWith('image/') ? 'Image' : row.type) : row.record ? row.record.service_type : 'Folder'}</td>
-              <td className="truncate px-3">{formatModified(row.modified || row.file?.uploaded_at || row.records?.[0]?.created_at)}</td>
-              <td className="truncate px-3">{row.file ? formatFileSize(row.file.file_size) : '—'}</td>
-              <td className="relative px-3 text-center">
+              <td className="truncate border-y border-[#e7dfd2] bg-white px-3 transition-colors group-hover:bg-[#fbfaf7]">{row.file ? (row.file.mime_type === 'application/pdf' ? 'PDF Document' : row.file.mime_type?.startsWith('image/') ? 'Image' : row.type) : row.record ? row.record.service_type : 'Folder'}</td>
+              <td className="truncate whitespace-nowrap border-y border-[#e7dfd2] bg-white px-3 transition-colors group-hover:bg-[#fbfaf7]">{formatModified(row.modified || row.file?.uploaded_at || row.records?.[0]?.created_at)}</td>
+              <td className="truncate whitespace-nowrap border-y border-[#e7dfd2] bg-white px-3 transition-colors group-hover:bg-[#fbfaf7]">{row.file ? formatFileSize(row.file.file_size) : '—'}</td>
+              <td className="relative rounded-r-md border-y border-r border-[#e7dfd2] bg-white px-3 text-center transition-colors group-hover:bg-[#fbfaf7]">
                 <button type="button" aria-label={`Actions for ${row.name}`} aria-expanded={activeMenu?.row.id === row.id} className="text-[#697989] hover:text-[#a6813f]" onClick={(event) => { event.stopPropagation(); toggleRowMenu(event, row); }}><MoreVertical className="h-4 w-4" /></button>
               </td>
             </tr>)}
